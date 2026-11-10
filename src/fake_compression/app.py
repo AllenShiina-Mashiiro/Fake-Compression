@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(saved_geometry)
 
         self.worker = None
+        self.active_log = None
         self.stack = QStackedWidget()
         root = QWidget()
         row = QHBoxLayout(root)
@@ -327,6 +328,7 @@ class MainWindow(QMainWindow):
         self.progress.setValue(0)
         self.progress.show()
         self.log.clear()
+        self.active_log = self.log
         self.worker = TaskWorker(service.create, source, output, name, password, video)
         self.worker.message.connect(self.log.appendPlainText)
         self.worker.progress.connect(self.progress.setValue)
@@ -353,6 +355,7 @@ class MainWindow(QMainWindow):
         self.extract_progress.setValue(0)
         self.extract_progress.show()
         self.extract_log.clear()
+        self.active_log = self.extract_log
         self.worker = TaskWorker(
             service.extract, fc, Path(self.extract_output.text()), password,
         )
@@ -367,7 +370,8 @@ class MainWindow(QMainWindow):
         if self.worker and self.worker.isRunning():
             self.cancel_compress_button.setEnabled(False)
             self.cancel_extract_button.setEnabled(False)
-            self.log.appendPlainText("正在请求取消…") if self.stack.currentIndex() == 0 else self.extract_log.appendPlainText("正在请求取消…")
+            if self.active_log:
+                self.active_log.appendPlainText("正在请求取消…")
             self.worker.cancel()
 
     def compress_succeeded(self, result):
