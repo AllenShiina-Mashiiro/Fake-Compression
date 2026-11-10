@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from .archive import ArchiveService
+from .archive_paths import validate_package_name
 from .tools import find_7z
 from .worker import TaskWorker
 
@@ -311,8 +312,13 @@ class MainWindow(QMainWindow):
     def start_compress(self):
         source, output = Path(self.source.text()), Path(self.output.text())
         password, name = self.password.text(), self.package_name.text().strip()
-        if not source.exists() or not name or Path(name).name != name:
-            QMessageBox.warning(self, "信息不完整", "请检查输入路径和包名称。")
+        if not source.exists():
+            QMessageBox.warning(self, "输入路径无效", "请选择一个存在的文件或文件夹。")
+            return
+        try:
+            validate_package_name(name)
+        except ValueError as exc:
+            QMessageBox.warning(self, "包名称无效", str(exc))
             return
         if len(password) < 12:
             QMessageBox.warning(self, "主密码过短", "主密码至少需要 12 个字符。")
