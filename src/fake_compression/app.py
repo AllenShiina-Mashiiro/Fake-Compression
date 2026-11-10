@@ -188,6 +188,8 @@ class MainWindow(QMainWindow):
         self.output.editingFinished.connect(self.save_settings)
 
         self.package_name = QLineEdit("archive")
+        self.batch_mode = QCheckBox("批量压缩：将所选总目录中的每个子文件夹分别打包")
+        self.batch_mode.toggled.connect(lambda checked: self.package_name.setEnabled(not checked))
         self.password = QLineEdit()
         self.password.setEchoMode(QLineEdit.Password)
         self.password.setPlaceholderText("设置用于保护本次加密包的密码")
@@ -208,7 +210,8 @@ class MainWindow(QMainWindow):
             lambda checked: (self.second_password.setEnabled(not checked),
                              self.second_password_confirm.setEnabled(not checked))
         )
-        self.add_field(layout, "包名称", self.package_name)
+        layout.addWidget(self.batch_mode)
+        self.add_field(layout, "包名称（批量模式下使用各子文件夹名称）", self.package_name)
         self.add_password_field(layout, "加密密码", self.password)
         self.add_password_field(layout, "确认密码", self.password_confirm)
         layout.addWidget(self.repeat_password)
@@ -252,7 +255,10 @@ class MainWindow(QMainWindow):
     def build_extract_page(self):
         page, layout = self.page_shell("恢复文件", "验证加密清单与全部分卷后，再恢复原始文件。")
         self.fc_path = QLineEdit()
-        self.fc_path.setPlaceholderText("选择 .fc 文件")
+        self.fc_path.setPlaceholderText("选择一个或多个加密成品")
+        self.selected_packages = []
+        self.extract_batch_mode = QCheckBox("批量恢复：处理所选的全部成品")
+        layout.addWidget(self.extract_batch_mode)
         browse = QPushButton("浏览…")
         browse.clicked.connect(self.pick_fc)
         layout.addWidget(QLabel("FC 文件"))
@@ -379,9 +385,10 @@ class MainWindow(QMainWindow):
             self.save_settings()
 
     def pick_fc(self):
-        path = QFileDialog.getOpenFileName(self, "选择 FC 文件", filter="All files (*)")[0]
-        if path:
-            self.fc_path.setText(path)
+        paths = QFileDialog.getOpenFileNames(self, "选择一个或多个加密成品", filter="All files (*)")[0]
+        if paths:
+            self.selected_packages = [Path(item) for item in paths]
+            self.fc_path.setText("；".join(item.name for item in self.selected_packages))
 
     def pick_extract_output(self):
         path = QFileDialog.getExistingDirectory(self, "选择恢复目录", self.extract_output.text())
@@ -462,11 +469,24 @@ class MainWindow(QMainWindow):
         self.progress.show()
         self.log.clear()
         self.active_log = self.log
-        self.worker = TaskWorker(
-            service.create, source, output, name, password, video,
-            second_password=self.second_password.text(),
-            repeat_password=self.repeat_password.isChecked(),
-        )
+        operation = service.create_batch if self.batch_mode.isChecked() else service.create
+        if self.batch_mode.isChecked():
+            if not source.is_dir():
+                QMessageBox.warning(self, "批量输入无效", "批量模式需要选择包含多个子文件夹的总目录。")
+                self.start_button.setEnabled(True)
+                self.cancel_compress_button.hide()
+                return
+            self.worker = TaskWorker(
+                operation, source, output, password,
+                second_password=self.second_password.text(),
+                repeat_password=self.repeat_password.isChecked(),
+            )
+        else:
+            self.worker = TaskWorker(
+                operation, source, output, name, password, video,
+                second_password=self.second_password.text(),
+                repeat_password=self.repeat_password.isChecked(),
+            )
         self.worker.message.connect(self.log.appendPlainText)
         self.worker.progress.connect(self.progress.setValue)
         self.worker.progress.connect(lambda value: self.progress_label.setText(f"{value}%"))
@@ -479,7 +499,8 @@ class MainWindow(QMainWindow):
         fc_text = self.fc_path.text().strip()
         output_text = self.extract_output.text().strip()
         fc, password = Path(fc_text), self.extract_password.text()
-        if not fc_text or not fc.is_file() or not password:
+        packages = self.selected_packages or ([fc] if fc_text else [])
+        if not packages or any(not item.is_file() for item in packages) or not password:
             QMessageBox.warning(self, "信息不完整", "请选择有效的加密成品并输入第一层密码。")
             return
         if not output_text:
@@ -500,11 +521,24 @@ class MainWindow(QMainWindow):
         self.extract_progress.show()
         self.extract_log.clear()
         self.active_log = self.extract_log
-        self.worker = TaskWorker(
-            service.extract, fc, Path(output_text), password,
-            second_password=self.extract_second_password.text(),
-            repeat_password=self.extract_repeat_password.isChecked(),
-        )
+        operation = service.extract_batch if self.extract_batch_mode.isChecked() else service.extract
+        if self.extract_batch_mode.isChecked():
+            self.worker = TaskWorker(
+                operation, packages, Path(output_text), password,
+                second_password=self.extract_second_password.text(),
+                repeat_password=self.extract_repeat_password.isChecked(),
+            )
+        else:
+            if len(packages) != 1:
+                QMessageBox.warning(self, "恢复模式不匹配", "选择了多个文件，请启用批量恢复。")
+                self.extract_button.setEnabled(True)
+                self.cancel_extract_button.hide()
+                return
+            self.worker = TaskWorker(
+                operation, packages[0], Path(output_text), password,
+                second_password=self.extract_second_password.text(),
+                repeat_password=self.extract_repeat_password.isChecked(),
+            )
         self.worker.message.connect(self.extract_log.appendPlainText)
         self.worker.progress.connect(self.extract_progress.setValue)
         self.worker.progress.connect(lambda value: self.extract_progress_label.setText(f"{value}%"))
