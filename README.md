@@ -6,19 +6,24 @@ A Windows desktop utility for creating encrypted, split 7-Zip archives and resto
 
 A practical desktop tool, not a dashboard template: restrained warm-neutral surfaces, compact typography, plain navigation, clear file paths and task output. No gratuitous gradients, decorative statistics or oversized icon cards.
 
-## Features in 0.1
+## Current development build: 0.2.0.dev1
 
-- PySide6 desktop interface with packaging, extraction and settings pages.
+- PySide6 desktop interface for packaging, restoration and settings.
 - Automatic split policy: up to 1 GiB = single archive; above 1 GiB through 5 GiB = 2 GiB volumes; above 5 GiB = 3 GiB volumes.
 - 7-Zip AES-256 archive encryption with encrypted headers (`-mhe=on`).
 - Password-protected `.fc` manifest using scrypt and AES-256-GCM.
-- SHA-256 validation of all archive volumes before extraction.
+- SHA-256 validation of every archive volume before extraction.
+- Real progress parsing from 7-Zip console output and cancellable background tasks.
+- Persistent 7-Zip path, output folders and window geometry using Windows user settings.
+- Extraction path validation rejects traversal, absolute paths, Windows device names and symbolic/hard links.
+- Extraction occurs in a temporary staging folder; existing destination items are never silently overwritten.
 - Optional video association as a separate preview file. Video bytes are never modified or used to conceal data.
+- GitHub Actions test workflow targets Windows and Ubuntu.
 
 ## Requirements
 
 - Python 3.10+
-- Windows 10/11
+- Windows 10/11 for the intended desktop experience
 - 7-Zip command-line executable (`7z.exe`)
 - Dependencies from `requirements.txt`
 
@@ -32,16 +37,18 @@ $env:PYTHONPATH = "src"
 py main.py
 ```
 
-7-Zip is detected from PATH and common installation folders. You can override its path in the Settings page.
+7-Zip is detected from PATH and common installation folders. You can override its path in Settings; the path and output folders are saved in the current Windows user profile.
 
 ## Tests
 
 ```powershell
 py -m pip install pytest
 $env:PYTHONPATH = "src"
-py -m pytest
+py -m pytest -q
 ```
 
-## Important
+## Security notes
 
-Keep the `.fc` manifest and every archive volume together. The master password cannot be recovered if lost. This is an initial development build; test with disposable copies before trusting important data. The first version is not yet hardened against every malicious archive extraction scenario. Do not run extraction as administrator.
+Keep the `.fc` manifest and every archive volume together. The master password cannot be recovered if lost. The video is a separate preview file and is not a steganographic container.
+
+7-Zip's command-line interface receives the derived archive password as a process argument. Other local processes with sufficient permissions may be able to inspect process arguments while a task is running. This prototype is not yet a hardened high-assurance vault. Test with disposable copies before trusting important data, and do not run extraction as administrator.
