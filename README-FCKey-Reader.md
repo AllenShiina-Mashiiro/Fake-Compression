@@ -24,14 +24,15 @@ The installer creates Start Menu shortcuts and offers an optional desktop shortc
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 py -m pip install -r requirements-fcreader.txt
-py -m pip install pyinstaller pillow
-python tools/build_icon.py src/fake_compression/assets/fake-compression.svg build/fake-compression.ico
+py -m pip install pyinstaller
 pyinstaller --clean --noconfirm fcreader.spec
 choco install innosetup --no-progress -y
 & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" FCKey-Reader.iss
 ```
 
 The executable is created at dist\FCKey-Reader.exe; the installer is dist\FCKey-Reader-Setup.exe.
+
+The Reader repository contains only the Reader application, its independent FCKEY v1 decoder, its own tests and packaging files. It does not vendor or import the Fake-Compression application source. The decoder protocol is documented below; when the FCKEY format changes, update the Reader implementation and its compatibility tests deliberately.
 
 ## Compatibility
 The decoder intentionally mirrors FCKEY v1: AES-256-GCM, scrypt (N=32768, r=8, p=1), the same authenticated-data marker and the same layer-specific external-password derivation. Keep both implementations in sync when the format version changes.
