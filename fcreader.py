@@ -93,7 +93,8 @@ class ReaderWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.NoFrame)
-        scroll.setWidget(root)\n        self.setCentralWidget(scroll)
+        scroll.setWidget(root)
+        self.setCentralWidget(scroll)
 
     def choose_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "选择 FCKEY 文件", "", "FCKey files (*.fckey);;All files (*)")
