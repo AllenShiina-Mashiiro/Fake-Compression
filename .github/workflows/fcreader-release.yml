@@ -1,0 +1,38 @@
+name: fcreader-release
+
+on:
+  push:
+    branches: [fcreader]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Reader and packaging dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-fcreader.txt pyinstaller pillow
+      - name: Generate Windows icon
+        run: python tools/build_icon.py src/fake_compression/assets/fake-compression.svg build/fake-compression.ico
+      - name: Build standalone Reader
+        run: pyinstaller --clean --noconfirm fcreader.spec
+      - name: Create portable ZIP
+        run: Compress-Archive -Path dist/FCKey-Reader.exe -DestinationPath dist/FCKey-Reader-Portable.zip -Force
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build installer with .fckey association
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" FCKey-Reader.iss'
+      - name: Upload Reader distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: FCKey-Reader-Windows-Distributions
+          path: |
+            dist/FCKey-Reader.exe
+            dist/FCKey-Reader-Portable.zip
+            dist/FCKey-Reader-Setup.exe
+          if-no-files-found: error
