@@ -14,7 +14,7 @@ from . import __version__
 
 from .archive import ArchiveService
 from .archive_paths import validate_package_name
-from .tools import find_7z
+from .tools import find_7z, find_rar
 from .worker import TaskWorker
 
 STYLE = """
@@ -283,12 +283,19 @@ class MainWindow(QMainWindow):
     def build_settings_page(self):
         page, layout = self.page_shell("设置", "外部工具路径。留空时会尝试从 PATH 和常见安装目录查找。")
         saved_7z = self.settings.value("tools/seven_zip", "")
+        saved_rar = self.settings.value("tools/winrar", "")
         self.seven_zip_path = QLineEdit(str(saved_7z or find_7z() or ""))
         self.add_field(layout, "7-Zip 可执行文件", self.seven_zip_path)
         self.seven_zip_path.editingFinished.connect(self.save_settings)
         browse = QPushButton("选择 7z.exe…")
         browse.clicked.connect(self.pick_7zip)
         layout.addWidget(browse, 0, Qt.AlignLeft)
+        self.winrar_path = QLineEdit(str(saved_rar or find_rar() or ""))
+        self.add_field(layout, "WinRAR 命令行工具（rar.exe）", self.winrar_path)
+        self.winrar_path.editingFinished.connect(self.save_settings)
+        browse_rar = QPushButton("选择 rar.exe…")
+        browse_rar.clicked.connect(self.pick_winrar)
+        layout.addWidget(browse_rar, 0, Qt.AlignLeft)
         self.settings_note = QLabel("设置会保存在当前 Windows 用户配置中，不会写入压缩包。")
         self.settings_note.setObjectName("muted")
         layout.addWidget(self.settings_note)
@@ -299,6 +306,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("paths/output", self.output.text().strip())
         self.settings.setValue("paths/extract_output", self.extract_output.text().strip())
         self.settings.setValue("tools/seven_zip", self.seven_zip_path.text().strip())
+        self.settings.setValue("tools/winrar", self.winrar_path.text().strip() if hasattr(self, "winrar_path") else "")
         self.settings.sync()
 
     def closeEvent(self, event):
@@ -343,7 +351,7 @@ class MainWindow(QMainWindow):
             self.save_settings()
 
     def pick_fc(self):
-        path = QFileDialog.getOpenFileName(self, "选择 FC 文件", filter="FC manifest (*.fc)")[0]
+        path = QFileDialog.getOpenFileName(self, "选择 FC 文件", filter="All files (*)")[0]
         if path:
             self.fc_path.setText(path)
 
@@ -351,6 +359,14 @@ class MainWindow(QMainWindow):
         path = QFileDialog.getExistingDirectory(self, "选择恢复目录", self.extract_output.text())
         if path:
             self.extract_output.setText(path)
+            self.save_settings()
+
+    def pick_winrar(self):
+        path = QFileDialog.getOpenFileName(
+            self, "选择 rar.exe", filter="Executable (*.exe)",
+        )[0]
+        if path:
+            self.winrar_path.setText(path)
             self.save_settings()
 
     def pick_7zip(self):
@@ -373,7 +389,10 @@ class MainWindow(QMainWindow):
             self.size_note.setText("输入路径尚不可用")
 
     def make_service(self):
-        return ArchiveService(self.seven_zip_path.text().strip() or None)
+        return ArchiveService(
+            self.seven_zip_path.text().strip() or None,
+            self.winrar_path.text().strip() or None if hasattr(self, "winrar_path") else None,
+        )
 
     def start_compress(self):
         source_text, output_text = self.source.text().strip(), self.output.text().strip()
