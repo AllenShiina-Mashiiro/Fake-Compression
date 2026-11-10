@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import QSettings, Qt, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon
 from PySide6.QtWidgets import (
-    QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
+    QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QCheckBox,
     QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton,
     QStackedWidget, QVBoxLayout, QWidget, QToolButton,
 )
@@ -194,9 +194,26 @@ class MainWindow(QMainWindow):
         self.password_confirm = QLineEdit()
         self.password_confirm.setEchoMode(QLineEdit.Password)
         self.password_confirm.setPlaceholderText("再次输入密码以确认")
+        self.repeat_password = QCheckBox("两层使用相同密码")
+        self.repeat_password.setChecked(True)
+        self.second_password = QLineEdit()
+        self.second_password.setEchoMode(QLineEdit.Password)
+        self.second_password.setPlaceholderText("设置 WinRAR 第二层密码")
+        self.second_password_confirm = QLineEdit()
+        self.second_password_confirm.setEchoMode(QLineEdit.Password)
+        self.second_password_confirm.setPlaceholderText("再次输入第二层密码")
+        self.second_password.setEnabled(False)
+        self.second_password_confirm.setEnabled(False)
+        self.repeat_password.toggled.connect(
+            lambda checked: (self.second_password.setEnabled(not checked),
+                             self.second_password_confirm.setEnabled(not checked))
+        )
         self.add_field(layout, "包名称", self.package_name)
         self.add_password_field(layout, "加密密码", self.password)
         self.add_password_field(layout, "确认密码", self.password_confirm)
+        layout.addWidget(self.repeat_password)
+        self.add_password_field(layout, "第二层密码（WinRAR）", self.second_password)
+        self.add_password_field(layout, "确认第二层密码", self.second_password_confirm)
 
         self.size_note = QLabel("尚未选择输入内容")
         self.size_note.setObjectName("muted")
@@ -251,7 +268,18 @@ class MainWindow(QMainWindow):
 
         self.extract_password = QLineEdit()
         self.extract_password.setEchoMode(QLineEdit.Password)
-        self.add_password_field(layout, "恢复密码", self.extract_password)
+        self.extract_repeat_password = QCheckBox("两层使用相同密码")
+        self.extract_repeat_password.setChecked(True)
+        self.extract_second_password = QLineEdit()
+        self.extract_second_password.setEchoMode(QLineEdit.Password)
+        self.extract_second_password.setPlaceholderText("WinRAR 第二层密码")
+        self.extract_second_password.setEnabled(False)
+        self.extract_repeat_password.toggled.connect(
+            lambda checked: self.extract_second_password.setEnabled(not checked)
+        )
+        self.add_password_field(layout, "第一层密码（7-Zip）", self.extract_password)
+        layout.addWidget(self.extract_repeat_password)
+        self.add_password_field(layout, "第二层密码（WinRAR）", self.extract_second_password)
         self.extract_progress = QProgressBar()
         self.extract_progress.setRange(0, 100)
         self.extract_progress.setValue(0)
@@ -413,7 +441,10 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "包名称无效", str(exc))
             return
         if password != self.password_confirm.text():
-            QMessageBox.warning(self, "密码不一致", "两次输入的密码不一致，请检查后重试。")
+            QMessageBox.warning(self, "密码不一致", "两次输入的第一层密码不一致，请检查后重试。")
+            return
+        if not self.repeat_password.isChecked() and self.second_password.text() != self.second_password_confirm.text():
+            QMessageBox.warning(self, "密码不一致", "两次输入的第二层密码不一致，请检查后重试。")
             return
         video = Path(self.video.text()) if self.video.text().strip() else None
         try:
@@ -431,7 +462,11 @@ class MainWindow(QMainWindow):
         self.progress.show()
         self.log.clear()
         self.active_log = self.log
-        self.worker = TaskWorker(service.create, source, output, name, password, video)
+        self.worker = TaskWorker(
+            service.create, source, output, name, password, video,
+            second_password=self.second_password.text(),
+            repeat_password=self.repeat_password.isChecked(),
+        )
         self.worker.message.connect(self.log.appendPlainText)
         self.worker.progress.connect(self.progress.setValue)
         self.worker.progress.connect(lambda value: self.progress_label.setText(f"{value}%"))
@@ -445,7 +480,7 @@ class MainWindow(QMainWindow):
         output_text = self.extract_output.text().strip()
         fc, password = Path(fc_text), self.extract_password.text()
         if not fc_text or not fc.is_file() or not password:
-            QMessageBox.warning(self, "信息不完整", "请选择有效的 .fc 文件并输入主密码。")
+            QMessageBox.warning(self, "信息不完整", "请选择有效的加密成品并输入第一层密码。")
             return
         if not output_text:
             QMessageBox.warning(self, "恢复目录无效", "请选择文件恢复目录。")
@@ -467,6 +502,8 @@ class MainWindow(QMainWindow):
         self.active_log = self.extract_log
         self.worker = TaskWorker(
             service.extract, fc, Path(output_text), password,
+            second_password=self.extract_second_password.text(),
+            repeat_password=self.extract_repeat_password.isChecked(),
         )
         self.worker.message.connect(self.extract_log.appendPlainText)
         self.worker.progress.connect(self.extract_progress.setValue)
