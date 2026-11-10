@@ -20,8 +20,11 @@ class ArchiveService:
 
     def create(self, source: Path, output_dir: Path, name: str, master_password: str,
                video: Path | None = None, on_output=None, cancel_event=None) -> Path:
-        source, output_dir = source.resolve(), output_dir.resolve()
-        if not source.exists() or source.is_symlink():
+        source_input = Path(source)
+        if source_input.is_symlink():
+            raise ValueError("不支持将符号链接作为压缩输入。")
+        source, output_dir = source_input.resolve(), output_dir.resolve()
+        if not source.exists():
             raise FileNotFoundError(source)
         if source.is_dir() and output_dir.is_relative_to(source):
             raise ValueError("输出目录不能放在待压缩的输入文件夹内部。")
@@ -29,8 +32,8 @@ class ArchiveService:
             raise ValueError("必须设置主密码。")
         if not name or Path(name).name != name or name in {".", ".."}:
             raise ValueError("包名称必须是简单文件名，不能包含路径。")
-        if video and (not video.is_file() or video.resolve() == source):
-            raise ValueError("请选择有效且独立的预览视频文件。")
+        if video and (video.is_symlink() or not video.is_file() or video.resolve() == source):
+            raise ValueError("请选择有效、非符号链接且独立的预览视频文件。")
 
         output_dir.mkdir(parents=True, exist_ok=True)
         fc_path = output_dir / f"{name}.fc"
