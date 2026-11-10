@@ -2,14 +2,15 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QSettings, Qt, QUrl
 from PySide6.QtGui import QAction, QDesktopServices
-from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton,
     QStackedWidget, QVBoxLayout, QWidget, QToolButton,
 )
+
+from . import __version__
 
 from .archive import ArchiveService
 from .archive_paths import validate_package_name
@@ -17,21 +18,31 @@ from .tools import find_7z
 from .worker import TaskWorker
 
 STYLE = """
-QMainWindow, QWidget { background: #f4f4f1; color: #242522; font-family: "Segoe UI", "Microsoft YaHei"; font-size: 13px; }
-QFrame#rail { background: #eaeae5; border-right: 1px solid #d5d5ce; }
-QLabel#brand { font-size: 15px; font-weight: 650; letter-spacing: 1px; }
-QLabel#heading { font-size: 24px; font-weight: 600; }
-QLabel#muted { color: #777970; }
-QPushButton { background: transparent; border: 1px solid transparent; border-radius: 3px; padding: 9px 12px; text-align: left; }
-QPushButton:hover { background: #deded7; }
-QPushButton:checked { background: #d8d8d0; border-color: #c8c8bf; font-weight: 600; }
-QPushButton#primary { background: #292a26; color: #fff; border: 1px solid #292a26; padding: 10px 18px; }
-QPushButton#primary:hover { background: #41423d; }
-QPushButton:disabled { color: #999; }
-QLineEdit, QPlainTextEdit { background: #fff; border: 1px solid #d2d2ca; border-radius: 3px; padding: 8px; selection-background-color: #a6a99a; }
-QLineEdit:focus { border-color: #777c68; }
-QProgressBar { background: #e4e4dd; border: none; height: 5px; text-align: center; }
-QProgressBar::chunk { background: #5e6651; }
+QMainWindow, QWidget { background: #242424; color: #eeeeeb; font-family: "Segoe UI", "Microsoft YaHei UI"; font-size: 13px; }
+QMenuBar { background: #202020; color: #deded9; border-bottom: 1px solid #333333; padding: 3px 8px; }
+QMenuBar::item { background: transparent; padding: 6px 10px; }
+QMenuBar::item:selected, QMenu { background: #303030; }
+QMenu { border: 1px solid #444444; padding: 4px; }
+QMenu::item { padding: 7px 24px; }
+QMenu::item:selected { background: #414141; }
+QFrame#rail { background: #1d1d1d; border-right: 1px solid #343434; }
+QLabel#brand { color: #f0a33d; font-size: 15px; font-weight: 650; letter-spacing: .4px; }
+QLabel#heading { font-size: 25px; font-weight: 500; color: #f1f1ee; }
+QLabel#muted { color: #aaa9a2; }
+QPushButton { background: transparent; color: #e2e1dc; border: 1px solid transparent; border-radius: 2px; padding: 9px 12px; text-align: left; }
+QPushButton:hover { background: #333333; }
+QPushButton:checked { background: #37332d; color: #f0ad50; border-left: 3px solid #e5a044; font-weight: 600; }
+QPushButton#primary { background: #e4a047; color: #201b14; border: 1px solid #e4a047; padding: 10px 20px; font-weight: 600; }
+QPushButton#primary:hover { background: #f0b15d; }
+QPushButton:disabled { color: #777; }
+QLineEdit, QPlainTextEdit { background: #2c2c2c; color: #eeeeeb; border: 1px solid #484848; border-radius: 2px; padding: 8px; selection-background-color: #9d7138; }
+QLineEdit:focus { border-color: #d89a43; }
+QToolButton { color: #e5aa59; border: 1px solid #4b4b4b; padding: 6px 10px; }
+QToolButton:hover { background: #39342c; }
+QProgressBar { background: #393939; border: none; height: 5px; text-align: center; }
+QProgressBar::chunk { background: #e5a044; }
+QDialog { background: #262626; }
+QDialogButtonBox QPushButton { min-width: 84px; }
 """
 
 
@@ -39,7 +50,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.settings = QSettings("FakeCompression", "FakeCompression")
-        self.setWindowTitle("Fake-Compression")
+        self.setWindowTitle(f"Fake-Compression  ·  {__version__}")
         self.resize(1040, 700)
         self._build_menu()
         self.setMinimumSize(860, 600)
@@ -56,22 +67,25 @@ class MainWindow(QMainWindow):
         row.setSpacing(0)
         rail = QFrame()
         rail.setObjectName("rail")
-        rail.setFixedWidth(190)
+        rail.setFixedWidth(92)
         nav = QVBoxLayout(rail)
-        nav.setContentsMargins(15, 22, 15, 16)
-        brand = QLabel("FAKE-COMPRESSION")
+        nav.setContentsMargins(10, 22, 10, 16)
+        brand = QLabel("FC")
         brand.setObjectName("brand")
+        brand.setAlignment(Qt.AlignCenter)
+        brand.setToolTip("Fake-Compression")
         nav.addWidget(brand)
         nav.addSpacing(30)
         self.nav_buttons = []
-        for label, index in [("创建加密包", 0), ("恢复文件", 1), ("设置", 2)]:
+        for label, index in [("打包", 0), ("恢复", 1), ("设置", 2)]:
             button = QPushButton(label)
             button.setCheckable(True)
+            button.setMinimumHeight(48)
             button.clicked.connect(lambda checked=False, i=index: self.switch_page(i))
             nav.addWidget(button)
             self.nav_buttons.append(button)
         nav.addStretch()
-        footer = QLabel("0.2.0  ·  Windows")
+        footer = QLabel(f"{__version__}  ·  Windows")
         footer.setObjectName("muted")
         nav.addWidget(footer)
         row.addWidget(rail)
@@ -94,7 +108,7 @@ class MainWindow(QMainWindow):
             self,
             "关于 Fake-Compression",
             '<h3>Fake-Compression</h3>'
-            '<p>版本：0.3.0.dev1（开发版）</p>'
+            f'<p>版本：{__version__}</p>'
             '<p>开发者：AllenShiina-Mashiiro</p>'
             '<p><a href="https://github.com/AllenShiina-Mashiiro">GitHub 个人主页</a></p>'
             '<p><a href="https://github.com/AllenShiina-Mashiiro/Fake-Compression">项目仓库</a></p>',
@@ -123,14 +137,14 @@ class MainWindow(QMainWindow):
     def page_shell(self, title, subtitle):
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(34, 28, 34, 24)
+        layout.setContentsMargins(40, 34, 40, 28)
         heading = QLabel(title)
         heading.setObjectName("heading")
         note = QLabel(subtitle)
         note.setObjectName("muted")
         layout.addWidget(heading)
         layout.addWidget(note)
-        layout.addSpacing(22)
+        layout.addSpacing(28)
         return page, layout
 
     @staticmethod
@@ -146,7 +160,7 @@ class MainWindow(QMainWindow):
         return row
 
     def build_compress_page(self):
-        page, layout = self.page_shell("创建加密包", "选择要归档的内容。分卷大小按输入总量自动决定。")
+        page, layout = self.page_shell("创建加密包", "将文件安全归档。分卷策略会根据输入总量自动选择。")
         self.source = QLineEdit()
         self.source.setPlaceholderText("选择文件或文件夹")
         choose = QPushButton("浏览…")
@@ -216,7 +230,7 @@ class MainWindow(QMainWindow):
         return page
 
     def build_extract_page(self):
-        page, layout = self.page_shell("恢复文件", "选择 .fc 文件。程序会先验证所有分卷，再开始解压。")
+        page, layout = self.page_shell("恢复文件", "验证加密清单与全部分卷后，再恢复原始文件。")
         self.fc_path = QLineEdit()
         self.fc_path.setPlaceholderText("选择 .fc 文件")
         browse = QPushButton("浏览…")
