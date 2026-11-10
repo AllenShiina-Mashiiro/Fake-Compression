@@ -14,7 +14,9 @@
 - [x] Cancel running archive operations without freezing the UI
 - [x] Prevent accidental overwrite of existing package outputs
 - [x] Extract into a temporary staging directory before moving results
-- [x] Reject absolute paths, traversal, unsafe Windows names and archive links
+- [x] Reject absolute paths, traversal, unsafe Windows names, duplicate case-insensitive names and archive links
+- [x] Reject symlinks in input trees and validate package filenames
+- [x] Allow cancellation during archive-volume hashing
 - [x] Add Windows + Ubuntu GitHub Actions test workflow
 - [ ] Verify behavior with real 7-Zip builds on Windows
 - [ ] Add optional WinRAR compatibility backend
