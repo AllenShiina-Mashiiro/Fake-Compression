@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget, QCheckBox,
+    QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget, QCheckBox, QScrollArea,
 )
 
 from fcreader_core import read_and_derive
@@ -17,10 +17,10 @@ class ReaderWindow(QMainWindow):
         self.initial_file = Path(initial_file) if initial_file else None
         self.setWindowTitle("FCKey Reader")
         self.resize(620, 520)
-        self.setMinimumSize(560, 460)
+        self.setMinimumSize(420, 340)
         root = QWidget()
         layout = QVBoxLayout(root)
-        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setContentsMargins(18, 16, 18, 16)
         layout.setSpacing(12)
         title = QLabel("FCKey Reader")
         title.setStyleSheet("font-size:22px;font-weight:600")
@@ -90,7 +90,7 @@ class ReaderWindow(QMainWindow):
         self.read_button.setStyleSheet("padding:10px;font-weight:600")
         layout.addWidget(self.read_button)
         layout.addStretch()
-        self.setCentralWidget(root)
+        scroll = QScrollArea()\n        scroll.setWidgetResizable(True)\n        scroll.setFrameShape(QScrollArea.NoFrame)\n        scroll.setWidget(root)\n        self.setCentralWidget(scroll)
 
     def choose_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "选择 FCKEY 文件", "", "FCKey files (*.fckey);;All files (*)")
