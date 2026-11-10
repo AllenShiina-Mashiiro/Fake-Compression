@@ -3,7 +3,6 @@ import queue
 import shutil
 import subprocess
 import threading
-import time
 from pathlib import Path
 
 
@@ -12,8 +11,13 @@ class OperationCancelled(RuntimeError):
 
 
 def find_7z(configured: str | None = None) -> str | None:
-    candidates = [configured, shutil.which("7z"), shutil.which("7z.exe"),
-        r"C:\\Program Files\\7-Zip\\7z.exe", r"C:\\Program Files (x86)\\7-Zip\\7z.exe"]
+    candidates = [
+        configured,
+        shutil.which("7z"),
+        shutil.which("7z.exe"),
+        r"C:\Program Files\7-Zip\7z.exe",
+        r"C:\Program Files (x86)\7-Zip\7z.exe",
+    ]
     for candidate in candidates:
         if candidate and Path(candidate).is_file():
             return str(Path(candidate))
@@ -30,8 +34,13 @@ def run_checked(command: list[str], on_output=None, cancel_event=None) -> None:
         raise OperationCancelled("任务已取消。")
 
     process = subprocess.Popen(
-        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, encoding="utf-8", errors="replace", shell=False,
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        shell=False,
         bufsize=1,
     )
     output_queue = queue.Queue()
@@ -73,7 +82,7 @@ def run_checked(command: list[str], on_output=None, cancel_event=None) -> None:
                 if pending and on_output:
                     on_output(pending.strip())
                 pending = ""
-            elif char in ("\\r", "\\n"):
+            elif char in ("\r", "\n"):
                 if pending and on_output:
                     on_output(pending.strip())
                 pending = ""
