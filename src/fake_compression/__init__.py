@@ -1,3 +1,3 @@
 """Fake-Compression desktop application."""
 
-__version__ = "0.2.0.dev1"
+__version__ = "1.0.0-beta.1"
