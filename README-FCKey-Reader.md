@@ -12,7 +12,7 @@ A small, independent Windows utility for reading Fake-Compression .fckey metadat
 It does not create archives, extract files, or require 7-Zip / WinRAR to be installed.
 
 ## Windows distributions
-The fcreader-release workflow publishes three artifacts:
+When packaging locally, you can create these artifacts:
 - FCKey-Reader.exe — standalone executable.
 - FCKey-Reader-Portable.zip — portable copy; no file association is registered.
 - FCKey-Reader-Setup.exe — installer that registers .fckey double-click opening and removes the association when uninstalled.
@@ -35,3 +35,6 @@ The executable is created at dist\FCKey-Reader.exe; the installer is dist\FCKey-
 
 ## Compatibility
 The decoder intentionally mirrors FCKEY v1: AES-256-GCM, scrypt (N=32768, r=8, p=1), the same authenticated-data marker and the same layer-specific external-password derivation. Keep both implementations in sync when the format version changes.
+
+## Source entry point
+Run `python main.py` to launch the standalone Reader. This branch's `main.py` intentionally imports `fcreader.main`; it does not launch the Fake-Compression archive application.
