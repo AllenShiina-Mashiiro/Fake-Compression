@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from .archive_paths import validate_archive_paths
+from .archive_paths import validate_archive_paths, validate_package_name
 from .crypto import archive_password, derive_key
 from .manifest import read_manifest, sha256_file, verify_parts, write_manifest
 from .sizing import inspect_source
@@ -30,8 +30,7 @@ class ArchiveService:
             raise ValueError("输出目录不能放在待压缩的输入文件夹内部。")
         if not master_password:
             raise ValueError("必须设置主密码。")
-        if not name or Path(name).name != name or name in {".", ".."}:
-            raise ValueError("包名称必须是简单文件名，不能包含路径。")
+        validate_package_name(name)
         if video and (video.is_symlink() or not video.is_file() or video.resolve() == source):
             raise ValueError("请选择有效、非符号链接且独立的预览视频文件。")
 
