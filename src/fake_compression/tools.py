@@ -24,7 +24,22 @@ def find_7z(configured: str | None = None) -> str | None:
     return None
 
 
-def run_checked(command: list[str], on_output=None, cancel_event=None) -> None:
+def find_rar(configured: str | None = None) -> str | None:
+    """Find the WinRAR console executable (rar.exe)."""
+    candidates = [
+        configured,
+        shutil.which("rar"),
+        shutil.which("rar.exe"),
+        r"C:\\Program Files\\WinRAR\\rar.exe",
+        r"C:\\Program Files (x86)\\WinRAR\\rar.exe",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file():
+            return str(Path(candidate))
+    return None
+
+
+def run_checked(command: list[str], on_output=None, cancel_event=None, cwd=None) -> None:
     """Run without a shell, stream console output and support responsive cancellation.
 
     The command is intentionally never logged: 7-Zip's -p argument contains a
@@ -41,6 +56,7 @@ def run_checked(command: list[str], on_output=None, cancel_event=None) -> None:
         encoding="utf-8",
         errors="replace",
         shell=False,
+        cwd=str(cwd) if cwd else None,
         bufsize=1,
     )
     output_queue = queue.Queue()
