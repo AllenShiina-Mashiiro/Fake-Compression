@@ -3,10 +3,12 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QAction, QDesktopServices
+from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton,
-    QStackedWidget, QVBoxLayout, QWidget,
+    QStackedWidget, QVBoxLayout, QWidget, QToolButton,
 )
 
 from .archive import ArchiveService
@@ -39,6 +41,7 @@ class MainWindow(QMainWindow):
         self.settings = QSettings("FakeCompression", "FakeCompression")
         self.setWindowTitle("Fake-Compression")
         self.resize(1040, 700)
+        self._build_menu()
         self.setMinimumSize(860, 600)
         saved_geometry = self.settings.value("window/geometry")
         if saved_geometry:
@@ -79,6 +82,38 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.build_extract_page())
         self.stack.addWidget(self.build_settings_page())
         self.switch_page(0)
+
+    def _build_menu(self):
+        about_menu = self.menuBar().addMenu("关于")
+        about_action = QAction("关于 Fake-Compression", self)
+        about_action.triggered.connect(self.show_about)
+        about_menu.addAction(about_action)
+
+    def show_about(self):
+        QMessageBox.about(
+            self,
+            "关于 Fake-Compression",
+            '<h3>Fake-Compression</h3>'
+            '<p>版本：0.3.0.dev1（开发版）</p>'
+            '<p>开发者：AllenShiina-Mashiiro</p>'
+            '<p><a href="https://github.com/AllenShiina-Mashiiro">GitHub 个人主页</a></p>'
+            '<p><a href="https://github.com/AllenShiina-Mashiiro/Fake-Compression">项目仓库</a></p>',
+        )
+
+    @staticmethod
+    def add_password_field(layout, label, edit):
+        layout.addWidget(QLabel(label))
+        row = QHBoxLayout()
+        row.addWidget(edit, 1)
+        toggle = QToolButton()
+        toggle.setText("显示")
+        toggle.setCheckable(True)
+        toggle.toggled.connect(
+            lambda visible: (edit.setEchoMode(QLineEdit.Normal if visible else QLineEdit.Password),
+                             toggle.setText("隐藏" if visible else "显示"))
+        )
+        row.addWidget(toggle)
+        layout.addLayout(row)
 
     def switch_page(self, index):
         self.stack.setCurrentIndex(index)
@@ -138,9 +173,13 @@ class MainWindow(QMainWindow):
         self.package_name = QLineEdit("archive")
         self.password = QLineEdit()
         self.password.setEchoMode(QLineEdit.Password)
-        self.password.setPlaceholderText("请使用足够强且可记住的主密码")
+        self.password.setPlaceholderText("设置用于保护本次加密包的密码")
+        self.password_confirm = QLineEdit()
+        self.password_confirm.setEchoMode(QLineEdit.Password)
+        self.password_confirm.setPlaceholderText("再次输入密码以确认")
         self.add_field(layout, "包名称", self.package_name)
-        self.add_field(layout, "主密码", self.password)
+        self.add_password_field(layout, "加密密码", self.password)
+        self.add_password_field(layout, "确认密码", self.password_confirm)
 
         self.size_note = QLabel("尚未选择输入内容")
         self.size_note.setObjectName("muted")
@@ -195,7 +234,7 @@ class MainWindow(QMainWindow):
 
         self.extract_password = QLineEdit()
         self.extract_password.setEchoMode(QLineEdit.Password)
-        self.add_field(layout, "主密码", self.extract_password)
+        self.add_password_field(layout, "恢复密码", self.extract_password)
         self.extract_progress = QProgressBar()
         self.extract_progress.setRange(0, 100)
         self.extract_progress.setValue(0)
@@ -337,8 +376,8 @@ class MainWindow(QMainWindow):
         except ValueError as exc:
             QMessageBox.warning(self, "包名称无效", str(exc))
             return
-        if len(password) < 12:
-            QMessageBox.warning(self, "主密码过短", "主密码至少需要 12 个字符。")
+        if password != self.password_confirm.text():
+            QMessageBox.warning(self, "密码不一致", "两次输入的密码不一致，请检查后重试。")
             return
         video = Path(self.video.text()) if self.video.text().strip() else None
         try:
