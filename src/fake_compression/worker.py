@@ -24,7 +24,7 @@ class TaskWorker(QThread):
 
     def _handle_output(self, line: str):
         self.message.emit(line)
-        match = re.search(r"(?:^|\\s)(\\d{1,3})%", line)
+        match = re.search(r"(?:^|\s)(\d{1,3})%", line)
         if match:
             self.progress.emit(max(0, min(100, int(match.group(1)))))
 
