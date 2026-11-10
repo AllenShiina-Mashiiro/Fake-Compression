@@ -31,7 +31,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Registry]
 Root: HKCR; Subkey: ".fckey"; ValueType: string; ValueName: ""; ValueData: "FCKeyReader.Metadata"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".fckey\\OpenWithProgids"; ValueType: string; ValueName: "FCKeyReader.Metadata"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".fckey\OpenWithProgids"; ValueType: string; ValueName: "FCKeyReader.Metadata"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "FCKeyReader.Metadata"; ValueType: string; ValueName: ""; ValueData: "Fake-Compression key metadata"; Flags: uninsdeletekey
 Root: HKCR; Subkey: "FCKeyReader.Metadata\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"
 Root: HKCR; Subkey: "FCKeyReader.Metadata\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
