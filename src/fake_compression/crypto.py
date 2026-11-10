@@ -8,11 +8,18 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 SCRYPT_N = 2 ** 15
 SCRYPT_R = 8
 SCRYPT_P = 1
+# hashlib.scrypt delegates to OpenSSL. Its default maxmem is commonly 32 MiB,
+# which is too tight for N=2**15, r=8 once implementation overhead is included.
+# Keep the KDF cost unchanged for compatibility and provide a bounded 128 MiB cap.
+SCRYPT_MAXMEM = 128 * 1024 * 1024
 
 def derive_key(password: str, salt: bytes) -> bytes:
     if not password:
         raise ValueError("A master password is required.")
-    return hashlib.scrypt(password.encode("utf-8"), salt=salt, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P, dklen=32)
+    return hashlib.scrypt(
+        password.encode("utf-8"), salt=salt, n=SCRYPT_N, r=SCRYPT_R,
+        p=SCRYPT_P, maxmem=SCRYPT_MAXMEM, dklen=32,
+    )
 
 def archive_password(key: bytes) -> str:
     digest = hmac.new(key, b"fake-compression/archive/v1", hashlib.sha256).digest()
