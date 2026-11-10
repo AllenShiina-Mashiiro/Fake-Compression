@@ -1,9 +1,11 @@
-"""7-Zip archive creation and extraction."""
+"""7-Zip archive creation and safe, staged extraction."""
 import base64
 import os
 import shutil
+import tempfile
 from pathlib import Path
 
+from .archive_paths import validate_archive_paths
 from .crypto import archive_password, derive_key
 from .manifest import read_manifest, sha256_file, verify_parts, write_manifest
 from .sizing import inspect_source
@@ -36,6 +38,15 @@ class ArchiveService:
         if fc_path.exists() or archive_base.exists() or list(output_dir.glob(f"{name}.7z.*")):
             raise FileExistsError("同名输出已存在。请更换包名称或先移走旧文件，避免覆盖。")
 
+        video_target = output_dir / video.name if video else None
+        if video_target:
+            if video_target.name == fc_path.name or video_target.name == archive_base.name:
+                raise ValueError("预览视频文件名与压缩包文件名冲突，请先重命名视频。")
+            if video_target.name.startswith(archive_base.name + "."):
+                raise ValueError("预览视频文件名与分卷文件名冲突，请先重命名视频。")
+            if video_target.exists() and video_target.resolve() != video.resolve():
+                raise FileExistsError(f"预览视频目标文件已存在：{video_target}")
+
         plan = inspect_source(source)
         salt = os.urandom(16)
         password = archive_password(derive_key(master_password, salt))
@@ -47,8 +58,6 @@ class ArchiveService:
         try:
             run_checked(command, on_output=on_output, cancel_event=cancel_event)
         except Exception:
-            # No previous files with this package name existed (checked above),
-            # so only our incomplete output is safe to remove here.
             for partial in [archive_base, *output_dir.glob(f"{name}.7z.*")]:
                 try:
                     if partial.is_file():
@@ -63,27 +72,37 @@ class ArchiveService:
         if not parts:
             raise RuntimeError("7-Zip 已结束，但没有找到生成的压缩包分卷。")
 
-        payload = {
-            "format": "FAKE-COMPRESSION-PAYLOAD",
-            "version": 1,
-            "archive_base": archive_base.name,
-            "salt": base64.b64encode(salt).decode("ascii"),
-            "parts": [{"name": p.name, "size": p.stat().st_size, "sha256": sha256_file(p)}
-                      for p in parts],
-            "video": None,
-        }
-        if video:
-            target = output_dir / video.name
-            if target.resolve() in {fc_path.resolve(), archive_base.resolve()}:
-                raise ValueError("预览视频文件名与压缩包文件名冲突，请先重命名视频。")
-            if target.exists() and target.resolve() != video.resolve():
-                raise FileExistsError(f"预览视频目标文件已存在：{target}")
-            if target.resolve() != video.resolve():
-                shutil.copy2(video, target)
-            payload["video"] = target.name
-            payload["video_sha256"] = sha256_file(target)
-
-        write_manifest(fc_path, payload, master_password)
+        copied_video = False
+        try:
+            payload = {
+                "format": "FAKE-COMPRESSION-PAYLOAD",
+                "version": 1,
+                "archive_base": archive_base.name,
+                "salt": base64.b64encode(salt).decode("ascii"),
+                "parts": [{"name": p.name, "size": p.stat().st_size, "sha256": sha256_file(p)}
+                          for p in parts],
+                "video": None,
+            }
+            if video_target:
+                if video_target.resolve() != video.resolve():
+                    shutil.copy2(video, video_target)
+                    copied_video = True
+                payload["video"] = video_target.name
+                payload["video_sha256"] = sha256_file(video_target)
+            write_manifest(fc_path, payload, master_password)
+        except Exception:
+            for partial in [fc_path, archive_base, *output_dir.glob(f"{name}.7z.*")]:
+                try:
+                    if partial.is_file():
+                        partial.unlink()
+                except OSError:
+                    pass
+            if copied_video and video_target:
+                try:
+                    video_target.unlink()
+                except OSError:
+                    pass
+            raise
         return fc_path
 
     def extract(self, fc_path: Path, output_dir: Path, master_password: str,
@@ -94,8 +113,36 @@ class ArchiveService:
         password = archive_password(derive_key(master_password, salt))
         verify_parts(fc_path.parent, payload["parts"])
         first_part = fc_path.parent / payload["parts"][0]["name"]
+
+        # Inspect the member list before extraction. Links and paths that can
+        # escape the staging directory are rejected rather than trusted.
+        listing = []
+        run_checked(
+            [self.seven_zip, "l", "-slt", str(first_part), f"-p{password}"],
+            on_output=listing.append,
+            cancel_event=cancel_event,
+        )
+        member_paths = [line[7:] for line in listing if line.startswith("Path = ")]
+        if member_paths:
+            member_paths = member_paths[1:]  # First Path entry describes the archive itself.
+        if any(line.startswith(("Symbolic Link = ", "Hard Link = ")) for line in listing):
+            raise ValueError("压缩包包含链接条目，出于安全考虑已拒绝恢复。")
+        validate_archive_paths(member_paths)
+
         output_dir.mkdir(parents=True, exist_ok=True)
-        command = [self.seven_zip, "x", "-bsp1", str(first_part),
-                   f"-o{output_dir}", f"-p{password}", "-y"]
-        run_checked(command, on_output=on_output, cancel_event=cancel_event)
+        staging = Path(tempfile.mkdtemp(prefix=".fc-staging-", dir=output_dir))
+        try:
+            command = [self.seven_zip, "x", "-bsp1", str(first_part),
+                       f"-o{staging}", f"-p{password}", "-y"]
+            run_checked(command, on_output=on_output, cancel_event=cancel_event)
+
+            staged_items = list(staging.iterdir())
+            collisions = [item.name for item in staged_items if (output_dir / item.name).exists()]
+            if collisions:
+                joined = "、".join(collisions[:5])
+                raise FileExistsError(f"恢复目录中已有同名文件或文件夹：{joined}")
+            for item in staged_items:
+                shutil.move(str(item), str(output_dir / item.name))
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
         return output_dir
