@@ -311,8 +311,11 @@ class MainWindow(QMainWindow):
     def start_compress(self):
         source, output = Path(self.source.text()), Path(self.output.text())
         password, name = self.password.text(), self.package_name.text().strip()
-        if not source.exists() or not password or not name or Path(name).name != name:
-            QMessageBox.warning(self, "信息不完整", "请检查输入路径、包名称和主密码。")
+        if not source.exists() or not name or Path(name).name != name:
+            QMessageBox.warning(self, "信息不完整", "请检查输入路径和包名称。")
+            return
+        if len(password) < 12:
+            QMessageBox.warning(self, "主密码过短", "主密码至少需要 12 个字符。")
             return
         video = Path(self.video.text()) if self.video.text().strip() else None
         try:
