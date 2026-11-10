@@ -1,8 +1,19 @@
 import base64
+import hashlib
 import json
 
-from fake_compression.fckey import encode_fckey, derive_archive_password
-from fcreader_core import read_and_derive
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from fcreader_core import AAD, MAGIC, NONCE_SIZE, SALT_SIZE, read_and_derive
+
+
+def make_fckey(payload, password1, password2):
+    salt = bytes(range(SALT_SIZE))
+    nonce = bytes(range(NONCE_SIZE))
+    material = password1.encode() + b"\\x00FC-LAYER-SEPARATOR\\x00" + password2.encode()
+    key = hashlib.scrypt(material, salt=salt, n=2**15, r=8, p=1,
+                         maxmem=128 * 1024 * 1024, dklen=32)
+    return MAGIC + salt + nonce + AESGCM(key).encrypt(nonce, payload, AAD)
 
 
 def test_standalone_reader_derives_exact_archiver_passwords(tmp_path):
@@ -17,11 +28,18 @@ def test_standalone_reader_derives_exact_archiver_passwords(tmp_path):
         "source_files": [],
     }
     raw = json.dumps(metadata).encode("utf-8")
-    blob = encode_fckey(raw, "first-pass", "second-pass")
     path = tmp_path / "metadata.fckey"
-    path.write_bytes(blob)
+    path.write_bytes(make_fckey(raw, "first-pass", "second-pass"))
 
     parsed, first, second = read_and_derive(path, "first-pass", "second-pass")
     assert parsed["source_root"] == "Example"
-    assert first == derive_archive_password("first-pass", salt, 1)
-    assert second == derive_archive_password("second-pass", salt, 2)
+    # Independent expected derivation, intentionally not importing FC code.
+    def expected(password, layer):
+        key = hashlib.scrypt(password.encode(), salt=salt, n=2**15, r=8, p=1,
+                             maxmem=128 * 1024 * 1024, dklen=32)
+        import hmac
+        digest = hmac.new(key, f"fake-compression/archive/layer-{layer}/v1".encode(),
+                          hashlib.sha256).digest()
+        return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+    assert first == expected("first-pass", 1)
+    assert second == expected("second-pass", 2)
