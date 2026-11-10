@@ -90,7 +90,10 @@ class ReaderWindow(QMainWindow):
         self.read_button.setStyleSheet("padding:10px;font-weight:600")
         layout.addWidget(self.read_button)
         layout.addStretch()
-        scroll = QScrollArea()\n        scroll.setWidgetResizable(True)\n        scroll.setFrameShape(QScrollArea.NoFrame)\n        scroll.setWidget(root)\n        self.setCentralWidget(scroll)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setWidget(root)\n        self.setCentralWidget(scroll)
 
     def choose_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "选择 FCKEY 文件", "", "FCKey files (*.fckey);;All files (*)")
