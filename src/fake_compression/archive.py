@@ -7,7 +7,10 @@ from pathlib import Path
 
 from .archive_paths import validate_archive_paths, validate_package_name
 from .crypto import archive_password, derive_key
-from .manifest import read_manifest, sha256_file, verify_parts, write_manifest
+from .manifest import (
+    build_file_manifest, read_manifest, sha256_file,
+    verify_extracted_files, verify_parts, write_manifest,
+)
 from .sizing import inspect_source
 from .tools import find_7z, run_checked
 
@@ -50,6 +53,7 @@ class ArchiveService:
                 raise FileExistsError(f"预览视频目标文件已存在：{video_target}")
 
         plan = inspect_source(source)
+        source_files = build_file_manifest(source, cancel_event)
         salt = os.urandom(16)
         password = archive_password(derive_key(master_password, salt))
         command = [self.seven_zip, "a", "-t7z", "-mx=5", "-mhe=on", "-bsp1",
@@ -83,6 +87,7 @@ class ArchiveService:
                 "salt": base64.b64encode(salt).decode("ascii"),
                 "parts": [{"name": p.name, "size": p.stat().st_size, "sha256": sha256_file(p, cancel_event)}
                           for p in parts],
+                "source_files": source_files,
                 "video": None,
             }
             if video_target:
@@ -137,6 +142,11 @@ class ArchiveService:
             command = [self.seven_zip, "x", "-bsp1", str(first_part),
                        f"-o{staging}", f"-p{password}", "-y"]
             run_checked(command, on_output=on_output, cancel_event=cancel_event)
+
+            # New manifests carry the original file inventory. Legacy packages
+            # remain readable, but only new packages can perform this extra check.
+            if "source_files" in payload:
+                verify_extracted_files(staging, payload["source_files"], cancel_event)
 
             staged_items = list(staging.iterdir())
             collisions = [item.name for item in staged_items if (output_dir / item.name).exists()]
