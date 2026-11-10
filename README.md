@@ -11,7 +11,7 @@ A practical desktop tool, not a dashboard template: restrained warm-neutral surf
 This version is an active development build. Do not treat the full dual-layer packaging workflow as complete until the end-to-end Windows tests have passed.
 
 - PySide6 desktop interface for packaging, restoration and settings.
-- Existing archive engine currently creates a password-protected 7-Zip AES-256 archive and encrypted integrity manifest.
+- The archive engine is being migrated to the two-layer 7-Zip AES-256 + WinRAR RAR5 AES-256 format.
 - Automatic split policy: up to 1 GiB = single archive; above 1 GiB through 5 GiB = 2 GiB volumes; above 5 GiB = 3 GiB volumes.
 - Password visibility controls and an About menu with project/developer GitHub links.
 - scrypt uses an explicit bounded OpenSSL memory allowance to avoid the common 32 MiB default-cap failure.
@@ -20,7 +20,7 @@ This version is an active development build. Do not treat the full dual-layer pa
 - Persistent 7-Zip path, output folders and window geometry using Windows user settings.
 - Extraction path validation rejects traversal, absolute paths, duplicate case-insensitive names, Windows device names and symbolic/hard links.
 - Extraction occurs in a temporary staging folder; existing destination items are never silently overwritten.
-- `.fckey` binary authenticated metadata and video-payload prototype modules exist, but are not yet wired into the end-to-end UI workflow.
+- The current Beta branch now wires `.fckey`, the outer ZIP package, WinRAR and the video-payload wrapper into the archive service. Full Windows end-to-end verification is still pending.
 
 ## Target archive layout (1.0.1-beta development)
 
@@ -31,7 +31,7 @@ This version is an active development build. Do not treat the full dual-layer pa
 5. Optionally wrap the outer package in the supported video-payload container.
 6. Restore in reverse order and verify the original file inventory, sizes and SHA-256 hashes.
 
-The outer package filename is not an identity field. It may be renamed; restoration must locate fixed internal entries and read the original folder name and archive layout from authenticated `.fckey` metadata. The implementation must never infer internal paths from the outer filename.
+The outer package filename is not an identity field. It may be renamed; restoration must locate fixed internal entries and read the original folder name and archive layout from authenticated `.fckey` metadata. The implementation must never infer internal paths from the outer filename. The current archive service uses fixed `metadata.fckey` and `payload.rar` entries and stores the original folder name inside authenticated metadata.
 
 ## Requirements
 
@@ -51,7 +51,7 @@ $env:PYTHONPATH = "src"
 py main.py
 ```
 
-7-Zip is detected from PATH and common installation folders. The WinRAR executable will be configurable in Settings as the second-layer workflow is integrated.
+7-Zip and WinRAR are detected from PATH and common installation folders. Both executable paths can be configured in Settings.
 
 ## Tests
 
@@ -61,7 +61,7 @@ $env:PYTHONPATH = "src"
 py -m pytest -q
 ```
 
-The required end-to-end validation environment is Windows with both 7-Zip and WinRAR installed. CI/unit tests alone cannot establish compatibility with the installed archiver versions.
+The required end-to-end validation environment is Windows with both 7-Zip and WinRAR installed. CI/unit tests alone cannot establish compatibility with installed archiver versions. In particular, verify multi-volume extraction, the RAR directory layout, video-container playback, arbitrary output renaming and SHA-256 equality against disposable test data.
 
 ## Security notes
 
