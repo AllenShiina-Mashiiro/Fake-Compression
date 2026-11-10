@@ -310,8 +310,15 @@ class MainWindow(QMainWindow):
         return ArchiveService(self.seven_zip_path.text().strip() or None)
 
     def start_compress(self):
-        source, output = Path(self.source.text()), Path(self.output.text())
+        source_text, output_text = self.source.text().strip(), self.output.text().strip()
         password, name = self.password.text(), self.package_name.text().strip()
+        if not source_text:
+            QMessageBox.warning(self, "输入路径无效", "请先选择要压缩的文件或文件夹。")
+            return
+        if not output_text:
+            QMessageBox.warning(self, "输出目录无效", "请选择压缩包的输出目录。")
+            return
+        source, output = Path(source_text), Path(output_text)
         if not source.exists():
             QMessageBox.warning(self, "输入路径无效", "请选择一个存在的文件或文件夹。")
             return
@@ -347,9 +354,14 @@ class MainWindow(QMainWindow):
         self.worker.start()
 
     def start_extract(self):
-        fc, password = Path(self.fc_path.text()), self.extract_password.text()
-        if not fc.is_file() or not password:
+        fc_text = self.fc_path.text().strip()
+        output_text = self.extract_output.text().strip()
+        fc, password = Path(fc_text), self.extract_password.text()
+        if not fc_text or not fc.is_file() or not password:
             QMessageBox.warning(self, "信息不完整", "请选择有效的 .fc 文件并输入主密码。")
+            return
+        if not output_text:
+            QMessageBox.warning(self, "恢复目录无效", "请选择文件恢复目录。")
             return
         try:
             service = self.make_service()
@@ -366,7 +378,7 @@ class MainWindow(QMainWindow):
         self.extract_log.clear()
         self.active_log = self.extract_log
         self.worker = TaskWorker(
-            service.extract, fc, Path(self.extract_output.text()), password,
+            service.extract, fc, Path(output_text), password,
         )
         self.worker.message.connect(self.extract_log.appendPlainText)
         self.worker.progress.connect(self.extract_progress.setValue)
