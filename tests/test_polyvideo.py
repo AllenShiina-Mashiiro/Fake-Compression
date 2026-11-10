@@ -9,7 +9,7 @@ def test_polyvideo_payload_survives_arbitrary_rename(tmp_path: Path):
     output = tmp_path / "disguised.mp4"
     extracted = tmp_path / "recovered-package.bin"
     video.write_bytes(b"video-container-prefix")
-    payload.write_bytes(b"PK\\x03\\x04encrypted-package-data")
+    payload.write_bytes(bytes((0x50, 0x4B, 0x03, 0x04)) + b"encrypted-package-data")
 
     create_polyhedron(video, payload, output)
     renamed = tmp_path / "renamed-to-anything.dat"
