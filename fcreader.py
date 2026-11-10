@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget,
+    QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget, QCheckBox,
 )
 
 from fcreader_core import read_and_derive
@@ -42,10 +42,15 @@ class ReaderWindow(QMainWindow):
         self.password1 = QLineEdit()
         self.password1.setEchoMode(QLineEdit.Password)
         self.password1.setPlaceholderText("输入创建归档时的第一层原始密码")
+        self.same_password = QCheckBox("两层使用相同密码")
+        self.same_password.setChecked(True)
         self.password2 = QLineEdit()
         self.password2.setEchoMode(QLineEdit.Password)
         self.password2.setPlaceholderText("输入创建归档时的第二层原始密码")
+        self.password2.setEnabled(False)
+        self.same_password.toggled.connect(lambda checked: self.password2.setEnabled(not checked))
         form.addRow("第一层原始密码", self.password1)
+        form.addRow(self.same_password)
         form.addRow("第二层原始密码", self.password2)
         layout.addLayout(form)
 
@@ -101,7 +106,8 @@ class ReaderWindow(QMainWindow):
             return
         try:
             metadata, first, second = read_and_derive(
-                Path(path), self.password1.text(), self.password2.text()
+                Path(path), self.password1.text(),
+                self.password1.text() if self.same_password.isChecked() else self.password2.text()
             )
         except Exception as exc:
             QMessageBox.critical(self, "读取失败", str(exc))
