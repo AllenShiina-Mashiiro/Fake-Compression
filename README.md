@@ -6,7 +6,7 @@ A Windows desktop utility for creating encrypted, split 7-Zip archives and resto
 
 A practical desktop tool, not a dashboard template: restrained warm-neutral surfaces, compact typography, plain navigation, clear file paths and task output. No gratuitous gradients, decorative statistics or oversized icon cards.
 
-## Current development build: 0.3.0.dev1
+## Current development build: 1.0.0-beta.1
 
 - PySide6 desktop interface for packaging, restoration and settings.
 - Automatic split policy: up to 1 GiB = single archive; above 1 GiB through 5 GiB = 2 GiB volumes; above 5 GiB = 3 GiB volumes.
@@ -55,3 +55,11 @@ py -m pytest -q
 Keep the `.fc` manifest and every archive volume together. The master password cannot be recovered if lost. The video is a separate preview file and is not a steganographic container.
 
 7-Zip's command-line interface receives the derived archive password as a process argument. Other local processes with sufficient permissions may be able to inspect process arguments while a task is running. This prototype is not yet a hardened high-assurance vault. Test with disposable copies before trusting important data, and do not run extraction as administrator.
+
+
+## Branch and release policy
+
+- `Beta` is the active development and validation branch. New features and fixes land here first.
+- After Beta validation is complete, promote the tested commit to `Alpha` for the user-facing release line.
+- Branch names are `Beta` and `Alpha`; package versions use matching prerelease labels, for example `1.0.0-beta.1` and `1.0.0-alpha.1`.
+- Keep release tags on the exact commit that was validated. Never promote an untested Beta commit.
