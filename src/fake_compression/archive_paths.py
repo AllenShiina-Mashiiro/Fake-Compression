@@ -11,17 +11,24 @@ _WINDOWS_RESERVED = {
 
 def validate_archive_paths(paths: list[str]) -> None:
     """Reject traversal and names that cannot be represented safely on Windows."""
+    seen = set()
     for raw in paths:
         if not raw or "\x00" in raw:
             raise ValueError("压缩包包含空文件名或无效字符。")
 
-        posix = PurePosixPath(raw.replace("\\", "/"))
+        normalized = raw.replace("\\", "/")
+        posix = PurePosixPath(normalized)
         windows = PureWindowsPath(raw)
-        if posix.is_absolute() or windows.is_absolute() or windows.drive:
+        if posix.is_absolute() or windows.is_absolute() or windows.drive or windows.root:
             raise ValueError(f"压缩包包含绝对路径：{raw}")
         parts = [part for part in posix.parts if part not in ("", ".")]
         if not parts or any(part == ".." for part in parts):
             raise ValueError(f"压缩包包含目录穿越路径：{raw}")
+
+        key = "/".join(parts).casefold()
+        if key in seen:
+            raise ValueError(f"压缩包包含重复或大小写冲突的路径：{raw}")
+        seen.add(key)
 
         for part in parts:
             if ":" in part or part.endswith((".", " ")):
