@@ -8,3 +8,19 @@ dist/
 .ruff_cache/
 *.log
 output/
+
+# Local environments and heavyweight build/cache output
+.python-version
+.python_env/
+venv*/
+.env/
+.cache/
+.mypy_cache/
+.pyright/
+.tox/
+.nox/
+htmlcov/
+.coverage*
+*.spec.bak
+*.egg-info/
+__pypackages__/
