@@ -151,7 +151,12 @@ class MainWindow(QMainWindow):
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self.progress.hide()
-        layout.addWidget(self.progress)
+        self.progress_label = QLabel("0%")
+        self.progress_label.setObjectName("muted")
+        progress_row = QHBoxLayout()
+        progress_row.addWidget(self.progress, 1)
+        progress_row.addWidget(self.progress_label)
+        layout.addLayout(progress_row)
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(400)
@@ -195,7 +200,12 @@ class MainWindow(QMainWindow):
         self.extract_progress.setRange(0, 100)
         self.extract_progress.setValue(0)
         self.extract_progress.hide()
-        layout.addWidget(self.extract_progress)
+        self.extract_progress_label = QLabel("0%")
+        self.extract_progress_label.setObjectName("muted")
+        progress_row = QHBoxLayout()
+        progress_row.addWidget(self.extract_progress, 1)
+        progress_row.addWidget(self.extract_progress_label)
+        layout.addLayout(progress_row)
         self.extract_log = QPlainTextEdit()
         self.extract_log.setReadOnly(True)
         self.extract_log.setMaximumBlockCount(400)
@@ -342,12 +352,14 @@ class MainWindow(QMainWindow):
         self.cancel_compress_button.setEnabled(True)
         self.cancel_compress_button.show()
         self.progress.setValue(0)
+        self.progress_label.setText("处理中")
         self.progress.show()
         self.log.clear()
         self.active_log = self.log
         self.worker = TaskWorker(service.create, source, output, name, password, video)
         self.worker.message.connect(self.log.appendPlainText)
         self.worker.progress.connect(self.progress.setValue)
+        self.worker.progress.connect(lambda value: self.progress_label.setText(f"{value}%"))
         self.worker.succeeded.connect(self.compress_succeeded)
         self.worker.failed.connect(self.compress_failed)
         self.worker.cancelled.connect(self.compress_cancelled)
@@ -374,6 +386,7 @@ class MainWindow(QMainWindow):
         self.cancel_extract_button.setEnabled(True)
         self.cancel_extract_button.show()
         self.extract_progress.setValue(0)
+        self.extract_progress_label.setText("处理中")
         self.extract_progress.show()
         self.extract_log.clear()
         self.active_log = self.extract_log
@@ -382,6 +395,7 @@ class MainWindow(QMainWindow):
         )
         self.worker.message.connect(self.extract_log.appendPlainText)
         self.worker.progress.connect(self.extract_progress.setValue)
+        self.worker.progress.connect(lambda value: self.extract_progress_label.setText(f"{value}%"))
         self.worker.succeeded.connect(self.extract_succeeded)
         self.worker.failed.connect(self.extract_failed)
         self.worker.cancelled.connect(self.extract_cancelled)
@@ -396,36 +410,42 @@ class MainWindow(QMainWindow):
             self.worker.cancel()
 
     def compress_succeeded(self, result):
+        self.progress_label.setText("完成")
         self.progress.hide()
         self.start_button.setEnabled(True)
         self.cancel_compress_button.hide()
         self.log.appendPlainText(f"完成：{result}")
 
     def compress_failed(self, message):
+        self.progress_label.setText("失败")
         self.progress.hide()
         self.start_button.setEnabled(True)
         self.cancel_compress_button.hide()
         self.log.appendPlainText("错误：" + message)
 
     def compress_cancelled(self):
+        self.progress_label.setText("已取消")
         self.progress.hide()
         self.start_button.setEnabled(True)
         self.cancel_compress_button.hide()
         self.log.appendPlainText("任务已取消。请检查并清理可能残留的临时文件。")
 
     def extract_succeeded(self, result):
+        self.extract_progress_label.setText("完成")
         self.extract_progress.hide()
         self.extract_button.setEnabled(True)
         self.cancel_extract_button.hide()
         self.extract_log.appendPlainText(f"恢复完成：{result}")
 
     def extract_failed(self, message):
+        self.extract_progress_label.setText("失败")
         self.extract_progress.hide()
         self.extract_button.setEnabled(True)
         self.cancel_extract_button.hide()
         self.extract_log.appendPlainText("错误：" + message)
 
     def extract_cancelled(self):
+        self.extract_progress_label.setText("已取消")
         self.extract_progress.hide()
         self.extract_button.setEnabled(True)
         self.cancel_extract_button.hide()
