@@ -3,7 +3,7 @@ import base64, hashlib, hmac, json
 from pathlib import Path
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-MAGIC = b"FCKEY\\x02\\x00"
+MAGIC = b"FCKEY\x02\x00"
 NONCE_SIZE = 12
 READER_KEY = bytes.fromhex("8f2a91c4d6e70b3a5c1d9e2f4a6b8c0d112233445566778899aabbccddeeff00")
 
