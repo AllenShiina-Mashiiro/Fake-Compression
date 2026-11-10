@@ -64,7 +64,10 @@ def run_checked(command: list[str], on_output=None, cancel_event=None) -> None:
     try:
         while not eof or process.poll() is None:
             if cancel_event and cancel_event.is_set():
-                process.terminate()
+                try:
+                    process.terminate()
+                except OSError:
+                    pass
                 try:
                     process.wait(timeout=4)
                 except subprocess.TimeoutExpired:
@@ -98,5 +101,6 @@ def run_checked(command: list[str], on_output=None, cancel_event=None) -> None:
         if process.poll() is None:
             process.kill()
             process.wait()
+        reader.join(timeout=1)
         if process.stdout:
             process.stdout.close()
