@@ -5,18 +5,30 @@
 - [x] Source selection, optional video association, output directory
 - [x] Automatic 1 / 2 / 3 GiB volume policy
 - [x] 7-Zip encrypted archive creation and extraction
-- [x] Password-protected authenticated `.fc` manifest
+- [x] Password-protected authenticated .fc manifest
 - [x] SHA-256 validation of archive volumes
-- [ ] Windows end-to-end smoke test with real 7-Zip installations
 
-## 0.2 — hardening
-- Persist settings and add optional WinRAR compatibility backend
-- Add cancellation, determinate progress parsing, collision handling and atomic staging
-- Add safer extraction checks for traversal and symlinks
-- Add packaging workflow and release artifacts
+## 0.2 — usability and extraction hardening
+- [x] Persist 7-Zip path, output folders and window geometry
+- [x] Parse 7-Zip percentage output into a real progress bar
+- [x] Cancel running archive operations without freezing the UI
+- [x] Prevent accidental overwrite of existing package outputs
+- [x] Extract into a temporary staging directory before moving results
+- [x] Reject absolute paths, traversal, unsafe Windows names and archive links
+- [x] Add Windows + Ubuntu GitHub Actions test workflow
+- [ ] Verify behavior with real 7-Zip builds on Windows
+- [ ] Add optional WinRAR compatibility backend
+
+## 0.3 — release preparation
+- [ ] Add packaging workflow (PyInstaller) and a Windows portable build
+- [ ] Improve extraction progress and cancellation cleanup UX
+- [ ] Add password confirmation and password-strength guidance
+- [ ] Add application icon and file association for .fc
+- [ ] Add end-to-end tests using real 7-Zip, including split archives
 
 ## Format and security decisions
 - The video remains a separate ordinary preview file. Archive bytes are never appended to it or used to disguise data.
-- `.fc` contains an authenticated encrypted manifest. The master password derives a per-package archive password; no archive password is stored in plaintext.
+- .fc contains an authenticated encrypted manifest. The master password derives a per-package archive password; no archive password is stored in plaintext.
 - Missing or modified split volumes are rejected before extraction.
-- 7-Zip CLI password arguments may be visible to local process inspection tools. Treat this initial version as a local prototype, not a hardened high-assurance vault.
+- Extraction validates archive paths and stages output before moving it into the destination.
+- 7-Zip CLI password arguments may be visible to local process inspection tools. This prototype is not a hardened high-assurance vault.
