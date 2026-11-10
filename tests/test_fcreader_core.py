@@ -10,7 +10,7 @@ from fcreader_core import AAD, MAGIC, NONCE_SIZE, SALT_SIZE, read_and_derive
 def make_fckey(payload, password1, password2):
     salt = bytes(range(SALT_SIZE))
     nonce = bytes(range(NONCE_SIZE))
-    material = password1.encode() + b"\\x00FC-LAYER-SEPARATOR\\x00" + password2.encode()
+    material = password1.encode() + b"\x00FC-LAYER-SEPARATOR\x00" + password2.encode()
     key = hashlib.scrypt(material, salt=salt, n=2**15, r=8, p=1,
                          maxmem=128 * 1024 * 1024, dklen=32)
     return MAGIC + salt + nonce + AESGCM(key).encrypt(nonce, payload, AAD)
