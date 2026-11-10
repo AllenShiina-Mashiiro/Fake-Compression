@@ -12,8 +12,9 @@ from fcreader_core import read_and_derive
 
 
 class ReaderWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, initial_file=None):
         super().__init__()
+        self.initial_file = Path(initial_file) if initial_file else None
         self.setWindowTitle("FCKey Reader")
         self.resize(620, 520)
         self.setMinimumSize(560, 460)
@@ -145,7 +146,11 @@ def main():
         QPushButton { background:#383838; border:1px solid #555; padding:7px 12px; }
         QPushButton:hover { background:#454545; }
     """)
-    window = ReaderWindow()
+    initial_file = next((arg for arg in sys.argv[1:] if not arg.startswith("-")), None)
+    window = ReaderWindow(initial_file=initial_file)
+    if window.initial_file and window.initial_file.is_file():
+        window.file_path.setText(str(window.initial_file))
+        window.info.setText("已从文件关联打开。输入原始密码后点击“验证并读取”。")
     window.show()
     return app.exec()
 
