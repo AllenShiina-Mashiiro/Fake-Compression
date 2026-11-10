@@ -19,3 +19,19 @@ def test_fckey_rejects_wrong_password():
 def test_fckey_rejects_corrupt_header():
     with pytest.raises(ValueError, match="不是有效的 FCKEY"):
         decode_fckey(b"not-an-fckey", "first", "second")
+
+
+def test_external_layer_passwords_are_stable_and_separated():
+    from fake_compression.fckey import derive_archive_password
+
+    salt = bytes(range(16))
+    first = derive_archive_password("same raw password", salt, 1)
+    second = derive_archive_password("same raw password", salt, 2)
+    assert first == derive_archive_password("same raw password", salt, 1)
+    assert first != second
+    assert first != derive_archive_password("different password", salt, 1)
+
+
+def test_fckey_requires_both_original_passwords():
+    with pytest.raises(ValueError, match="都不能为空"):
+        encode_fckey(b"metadata", "first", "")
