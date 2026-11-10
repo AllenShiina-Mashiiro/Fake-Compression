@@ -82,7 +82,7 @@ class ArchiveService:
                 "version": 1,
                 "archive_base": archive_base.name,
                 "salt": base64.b64encode(salt).decode("ascii"),
-                "parts": [{"name": p.name, "size": p.stat().st_size, "sha256": sha256_file(p)}
+                "parts": [{"name": p.name, "size": p.stat().st_size, "sha256": sha256_file(p, cancel_event)}
                           for p in parts],
                 "video": None,
             }
@@ -91,7 +91,7 @@ class ArchiveService:
                     shutil.copy2(video, video_target)
                     copied_video = True
                 payload["video"] = video_target.name
-                payload["video_sha256"] = sha256_file(video_target)
+                payload["video_sha256"] = sha256_file(video_target, cancel_event)
             write_manifest(fc_path, payload, master_password)
         except Exception:
             for partial in [fc_path, archive_base, *output_dir.glob(f"{name}.7z.*")]:
@@ -114,7 +114,7 @@ class ArchiveService:
         payload = read_manifest(fc_path, master_password)
         salt = base64.b64decode(payload["salt"], validate=True)
         password = archive_password(derive_key(master_password, salt))
-        verify_parts(fc_path.parent, payload["parts"])
+        verify_parts(fc_path.parent, payload["parts"], cancel_event)
         first_part = fc_path.parent / payload["parts"][0]["name"]
 
         # Inspect the member list before extraction. Links and paths that can
