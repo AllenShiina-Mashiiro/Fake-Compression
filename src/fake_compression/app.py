@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, QUrl
-from PySide6.QtGui import QAction, QDesktopServices
+from PySide6.QtGui import QAction, QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton,
@@ -51,6 +51,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.settings = QSettings("FakeCompression", "FakeCompression")
         self.setWindowTitle(f"Fake-Compression  ·  {__version__}")
+        icon_path = Path(__file__).resolve().parent / "assets" / "fake-compression.svg"
+        if icon_path.is_file():
+            self.setWindowIcon(QIcon(str(icon_path)))
         self.resize(1040, 700)
         self._build_menu()
         self.setMinimumSize(860, 600)
