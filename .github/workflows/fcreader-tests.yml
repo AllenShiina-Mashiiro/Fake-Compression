@@ -1,0 +1,27 @@
+name: fcreader-tests
+
+on:
+  push:
+    branches: [fcreader]
+  pull_request:
+    branches: [fcreader]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python-version: ["3.11"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Reader dependencies
+        run: python -m pip install -r requirements-fcreader.txt pytest
+      - name: Compile Reader
+        run: python -m compileall -q fcreader.py fcreader_core.py src
+      - name: Run protocol and application tests
+        run: python -m pytest -q
