@@ -210,3 +210,51 @@ class ArchiveService:
                 raise FileExistsError(f"恢复目标已存在：{destination}")
             shutil.move(str(restored_root), str(destination))
             return destination
+
+    def create_batch(self, source_root: Path, output_dir: Path, master_password: str,
+                     on_output=None, cancel_event=None, second_password: str | None = None,
+                     repeat_password: bool = True) -> list[dict]:
+        """Create one independent package for each immediate child directory."""
+        root = Path(source_root).resolve()
+        if not root.is_dir():
+            raise NotADirectoryError(root)
+        folders = sorted((item for item in root.iterdir() if item.is_dir() and not item.is_symlink()),
+                         key=lambda item: item.name.casefold())
+        if not folders:
+            raise ValueError("批量压缩目录中没有可处理的子文件夹。")
+        results = []
+        for folder in folders:
+            if cancel_event and cancel_event.is_set():
+                from .tools import OperationCancelled
+                raise OperationCancelled("批量任务已取消。")
+            try:
+                result = self.create(
+                    folder, output_dir, folder.name, master_password,
+                    on_output=on_output, cancel_event=cancel_event,
+                    second_password=second_password, repeat_password=repeat_password,
+                )
+                results.append({"source": folder.name, "success": True, "output": str(result)})
+            except Exception as exc:
+                results.append({"source": folder.name, "success": False, "error": str(exc)})
+        return results
+
+    def extract_batch(self, package_paths: list[Path], output_dir: Path, master_password: str,
+                      on_output=None, cancel_event=None, second_password: str | None = None,
+                      repeat_password: bool = True) -> list[dict]:
+        """Restore multiple packages independently; report failures without stopping the batch."""
+        results = []
+        for package in package_paths:
+            if cancel_event and cancel_event.is_set():
+                from .tools import OperationCancelled
+                raise OperationCancelled("批量任务已取消。")
+            package = Path(package)
+            try:
+                result = self.extract(
+                    package, output_dir, master_password,
+                    on_output=on_output, cancel_event=cancel_event,
+                    second_password=second_password, repeat_password=repeat_password,
+                )
+                results.append({"package": str(package), "success": True, "output": str(result)})
+            except Exception as exc:
+                results.append({"package": str(package), "success": False, "error": str(exc)})
+        return results
