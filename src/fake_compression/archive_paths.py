@@ -36,3 +36,13 @@ def validate_archive_paths(paths: list[str]) -> None:
             device_name = part.split(".", 1)[0].upper()
             if device_name in _WINDOWS_RESERVED:
                 raise ValueError(f"压缩包包含 Windows 保留设备名：{raw}")
+
+
+def validate_package_name(name: str) -> None:
+    """Validate a package stem as a portable Windows file name."""
+    if not name or name in (".", "..") or len(name) > 180:
+        raise ValueError("包名称不能为空，且长度不能超过 180 个字符。")
+    if any(char in '<>:"/\\|?*' for char in name) or name.endswith((".", " ")):
+        raise ValueError("包名称包含 Windows 不允许的字符。")
+    if name.split(".", 1)[0].upper() in _WINDOWS_RESERVED:
+        raise ValueError("包名称不能使用 Windows 保留设备名。")
