@@ -2,6 +2,7 @@ import threading
 
 import pytest
 
+from fake_compression.crypto import derive_key
 from fake_compression.manifest import (
     build_file_manifest, read_manifest, sha256_file,
     verify_extracted_files, write_manifest,
@@ -53,3 +54,13 @@ def test_file_manifest_rejects_missing_and_extra_files(tmp_path):
     (staging / "unexpected.txt").write_text("unexpected", encoding="utf-8")
     with pytest.raises(ValueError, match="文件列表"):
         verify_extracted_files(staging, records)
+
+
+def test_scrypt_derives_32_byte_key_without_default_openssl_cap():
+    key = derive_key("simple-password", b"0123456789abcdef")
+    assert len(key) == 32
+    assert key == derive_key("simple-password", b"0123456789abcdef")
+
+
+def test_scrypt_uses_password_as_given():
+    assert derive_key("123", b"0123456789abcdef") != derive_key("1234", b"0123456789abcdef")
