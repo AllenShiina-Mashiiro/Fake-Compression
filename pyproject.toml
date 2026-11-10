@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fake-compression"
-version = "0.2.0.dev1"
+version = "0.3.0.dev1"
 description = "Encrypted split archive desktop utility"
 requires-python = ">=3.10"
 dependencies = ["PySide6>=6.8,<7", "cryptography>=44,<47"]
