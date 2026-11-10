@@ -6,11 +6,13 @@ A Windows desktop utility for creating encrypted, split 7-Zip archives and resto
 
 A practical desktop tool, not a dashboard template: restrained warm-neutral surfaces, compact typography, plain navigation, clear file paths and task output. No gratuitous gradients, decorative statistics or oversized icon cards.
 
-## Current development build: 0.2.0.dev1
+## Current development build: 0.3.0.dev1
 
 - PySide6 desktop interface for packaging, restoration and settings.
 - Automatic split policy: up to 1 GiB = single archive; above 1 GiB through 5 GiB = 2 GiB volumes; above 5 GiB = 3 GiB volumes.
-- 7-Zip AES-256 archive encryption with encrypted headers (`-mhe=on`); new master passwords must be at least 12 characters.
+- 7-Zip AES-256 archive encryption with encrypted headers (`-mhe=on`); passwords are user-selected and confirmed in the UI.
+- Password visibility controls and an About menu with project/developer GitHub links.
+- scrypt uses an explicit bounded OpenSSL memory allowance to avoid the common 32 MiB default-cap failure.
 - Password-protected `.fc` manifest using scrypt and AES-256-GCM.
 - SHA-256 validation of every archive volume before extraction.
 - Real progress parsing from 7-Zip console output and cancellable background tasks.
