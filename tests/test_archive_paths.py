@@ -53,3 +53,9 @@ def test_accepts_portable_package_names(name):
     from fake_compression.archive_paths import validate_package_name
 
     validate_package_name(name)
+
+
+
+def test_rejects_case_insensitive_duplicate_paths():
+    with pytest.raises(ValueError, match="重复"):
+        validate_archive_paths(["Docs/Readme.txt", "docs/README.TXT"])
