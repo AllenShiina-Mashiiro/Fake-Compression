@@ -44,7 +44,18 @@ class ArchiveService:
         if plan.volume_bytes:
             command.append(f"-v{plan.volume_bytes}b")
         command.extend([str(archive_base), str(source)])
-        run_checked(command, on_output=on_output, cancel_event=cancel_event)
+        try:
+            run_checked(command, on_output=on_output, cancel_event=cancel_event)
+        except Exception:
+            # No previous files with this package name existed (checked above),
+            # so only our incomplete output is safe to remove here.
+            for partial in [archive_base, *output_dir.glob(f"{name}.7z.*")]:
+                try:
+                    if partial.is_file():
+                        partial.unlink()
+                except OSError:
+                    pass
+            raise
 
         parts = sorted(p for p in output_dir.glob(f"{name}.7z.*") if p.is_file())
         if not parts and archive_base.is_file():
@@ -63,6 +74,8 @@ class ArchiveService:
         }
         if video:
             target = output_dir / video.name
+            if target.resolve() in {fc_path.resolve(), archive_base.resolve()}:
+                raise ValueError("预览视频文件名与压缩包文件名冲突，请先重命名视频。")
             if target.exists() and target.resolve() != video.resolve():
                 raise FileExistsError(f"预览视频目标文件已存在：{target}")
             if target.resolve() != video.resolve():
