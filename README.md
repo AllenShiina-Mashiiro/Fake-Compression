@@ -10,12 +10,13 @@ A practical desktop tool, not a dashboard template: restrained warm-neutral surf
 
 - PySide6 desktop interface for packaging, restoration and settings.
 - Automatic split policy: up to 1 GiB = single archive; above 1 GiB through 5 GiB = 2 GiB volumes; above 5 GiB = 3 GiB volumes.
-- 7-Zip AES-256 archive encryption with encrypted headers (`-mhe=on`).
+- 7-Zip AES-256 archive encryption with encrypted headers (`-mhe=on`); new master passwords must be at least 12 characters.
 - Password-protected `.fc` manifest using scrypt and AES-256-GCM.
 - SHA-256 validation of every archive volume before extraction.
 - Real progress parsing from 7-Zip console output and cancellable background tasks.
 - Persistent 7-Zip path, output folders and window geometry using Windows user settings.
-- Extraction path validation rejects traversal, absolute paths, Windows device names and symbolic/hard links.
+- Extraction path validation rejects traversal, absolute paths, duplicate case-insensitive names, Windows device names and symbolic/hard links.
+- Package names are checked against Windows filename restrictions; existing package outputs are never silently overwritten.
 - Extraction occurs in a temporary staging folder; existing destination items are never silently overwritten.
 - Optional video association as a separate preview file. Video bytes are never modified or used to conceal data.
 - GitHub Actions test workflow targets Windows and Ubuntu.
