@@ -3,6 +3,8 @@
 A Windows desktop utility for creating encrypted archives and restoring
 original folders.
 
+[简体中文](README.zh.md) | [English](README.md)
+
 ## 🎨 Design Direction
 
 This is a practical desktop utility, not a dashboard template.
