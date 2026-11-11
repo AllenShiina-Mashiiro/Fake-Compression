@@ -1,249 +1,296 @@
-# 📦 Fake-Compression（伪压缩）
+# 📦 Fake-Compression
 
-一款用于创建加密存档和恢复原始文件夹的 Windows 桌面实用程序
+A Windows desktop utility for creating encrypted archives and restoring
+original folders.
 
-## 🎨 设计方向
+## 🎨 Design Direction
 
-这是一款实用的桌面工具，而非仪表盘模板。
+This is a practical desktop utility, not a dashboard template.
 
-- 🎨 采用克制的暖色调中性界面
-- 🔤 简洁的字体与清晰的导航
-- 📁 明确展示文件路径和任务输出
-- 🚫 没有多余的渐变、装饰性统计数据或过大的图标卡片
+-   🎨 A restrained, warm neutral color palette
+-   🔤 Clean typography and clear navigation
+-   📁 Clearly displayed file paths and task output
+-   🚫 No unnecessary gradients, decorative statistics, or oversized
+    icon cards
 
-## 🚧 当前版本：`1.1.4-Alpha`
+## 🚧 Current Version: `1.1.4-Alpha`
 
-此版本处于以完成阶段，后续更新内容请关注 [beta分支](https://github.com/AllenShiina-Mashiiro/Fake-Compression/tree/Beta)
+This version is in the completion stage. For subsequent updates, please
+follow the [Beta
+branch](https://github.com/AllenShiina-Mashiiro/Fake-Compression/tree/Beta).
 
-### ✨ 核心功能
+### ✨ Core Features
 
-- 🖥️ 基于 PySide6 的桌面界面，支持打包、恢复
-- 🔐 归档引擎正在迁移至双层加密格式：
-  - 第一层：7-Zip AES-256
-  - 第二层：WinRAR RAR5 AES-256
-- 📂 分卷策略：
-  - 小于 1 GiB：单个归档
-  - 1 GiB 至 5 GiB：2 GiB 分卷
-  - 大于 5 GiB：4 GiB 分卷
-- 👁️ 密码可见性控制
-- 🛡️ scrypt 使用显式且有界的 OpenSSL 内存分配，避免常见的 32 MiB 默认上限失效
-- 🔎 恢复过程中验证归档卷和原始文件的 SHA-256
-- 📊 从 7-Zip 控制台输出中解析实际进度
-- ⏹️ 支持取消后台任务
-- ⚙️ 使用 Windows 用户设置持久化以下配置：
-  - 7-Zip 程序路径
-  - 输出文件夹
-  - 窗口几何形状
-- 🔒 提取路径安全验证，拒绝以下内容：
-  - 路径遍历
-  - 绝对路径
-  - 重复的不区分大小写的文件名
-  - Windows 设备名称
-  - 符号链接和硬链接
-- 📁 提取操作在临时暂存文件夹中进行，绝不会静默覆盖现有目标项目。
-- 📦 服务层和桌面界面均支持批量打包与批量恢复。每个项目独立处理，单个项目发生故障不会中止剩余批次。
+-   🖥️ A PySide6 desktop interface for packaging and restoration.
+-   🔐 The archive engine is being migrated to a dual-layer encryption
+    format:
+    -   Layer 1: 7-Zip AES-256
+    -   Layer 2: WinRAR RAR5 AES-256
+-   📂 Volume-splitting strategy:
+    -   Less than 1 GiB: a single archive
+    -   1 GiB to 5 GiB: 2 GiB volumes
+    -   More than 5 GiB: 4 GiB volumes
+-   👁️ Password visibility control.
+-   🛡️ scrypt uses explicit, bounded OpenSSL memory allocation to avoid
+    failures caused by the common 32 MiB default limit.
+-   🔎 SHA-256 verification of archive volumes and original files during
+    restoration.
+-   📊 Parses actual progress from 7-Zip console output.
+-   ⏹️ Background tasks can be cancelled.
+-   ⚙️ Uses Windows user settings to persist:
+    -   The 7-Zip executable path
+    -   The output folder
+    -   Window geometry
+-   🔒 Extraction path validation rejects:
+    -   Path traversal
+    -   Absolute paths
+    -   Duplicate case-insensitive names
+    -   Windows device names
+    -   Symbolic links and hard links
+-   📁 Extraction takes place in a temporary staging directory. Existing
+    destination items are never silently overwritten.
+-   📦 Both the service layer and desktop interface support batch
+    packaging and batch restoration. Each item is processed
+    independently; a failure in one item does not stop the remaining
+    batch.
 
-## 🧠原理
-- 🧾 当前版本的Fake-Compression会创建三个归档阶段：
->  1. 加密的 7-Zip 分卷
->  2. 加密的 WinRAR RAR5 归档
->  3. 仅包含文件的普通 ZIP 容器
-- 🔑 经过验证的元数据存储在与最终软件包同名的外部 `.fckey` sidecar 文件中。
+## 🧠 How It Works
 
-- 🗂️ 目标归档布局（1.1.4-Alpha）
+-   🧾 The current version of Fake-Compression creates three archive
+    stages: \> 1. Encrypted 7-Zip volumes \> 2. An encrypted WinRAR RAR5
+    archive \> 3. A regular ZIP container containing only the archive
+    file
 
-目标工作流程采用双层加密归档与外部元数据验证机制。
+-   🔑 Authenticated metadata is stored in an external `.fckey` sidecar
+    file whose name matches the final package.
 
-### 🔐 归档结构
+-   🗂️ Target Archive Layout (1.1.4-Alpha)
 
-> 1. 使用第一层密码创建 AES-256 加密的 7-Zip 分卷。
-> 2. 将所有分卷放入一个以源文件夹命名的目录中。
-> 3. 使用 WinRAR RAR5 AES-256，将整个目录加密为一个不分卷的 RAR 存档，并使用第二层密码。
-> 4. 仅将加密的 RAR 文件（`payload.rar`）放入一个普通、未加密的 ZIP 文件中。
-> 5. 将经过认证的元数据存储在与最终压缩包同名的外部 `.fckey` sidecar 文件中，不将其复制到 ZIP 内部。
-> 6. 为这个 ZIP 文件添加 `.rar` 后缀。
+The target workflow uses dual-layer encrypted archives and external
+metadata verification.
 
-> ⚠️ 第三层没有密码。能够检查文件签名的归档工具可以识别其实际格式，并将其作为 ZIP 文件打开。内部的 `payload.rar` 仍受到第二层密码保护。
+### 🔐 Archive Structure
 
-### 🔄 恢复流程
+> 1.  Create AES-256 encrypted 7-Zip volumes using the first-layer
+>     password.
+> 2.  Place all volumes in a directory named after the source folder.
+> 3.  Use WinRAR RAR5 AES-256 to encrypt the entire directory into a
+>     single, non-split RAR archive, using the second-layer password.
+> 4.  Place only the encrypted RAR file (`payload.rar`) inside a
+>     regular, unencrypted ZIP file.
+> 5.  Store authenticated metadata in an external `.fckey` sidecar file
+>     with the same name as the final package. Do not copy the metadata
+>     into the ZIP file.
+> 6.  Give the ZIP file a `.rar` extension.
 
-Fake-Compression 将执行以下操作：
+> ⚠️ The third layer has no password. Archive tools that inspect file
+> signatures can identify the actual format and open it as a ZIP file.
+> The internal `payload.rar` remains protected by the second-layer
+> password.
 
-- 📖 读取相邻的 `.fckey` sidecar 文件。
-- 🔓 解密并验证元数据。
-- 📦 提取外层 ZIP 容器中的加密归档。
-- 🔐 恢复两个加密归档层。
-- 🔎 验证原始文件清单。
-- 📏 验证文件大小。
-- 🔏 验证所有原始文件的 SHA-256 哈希值。
+### 🔄 Restoration Process
 
-如果你获取到由`Fake-Compression`打包得到的多面体 `.mp4`和`.fckey`文件
-你依旧正常可以手动解压：
-> - 1. 改 `.mp4` 后缀未 `.zip/rar`
-> - 2. 用 `Fake-Compression-fcreader.exe` 提取器提取里面的 **双层的特殊密钥**
-> - 3. 先用`WinRAR`使用`第二层密钥`解压`.zip`文件，解压完成后得到第一层的分卷内容
-> - 4. 再用`7-zip`使用`第一层密钥`解压最后的内容即可获得源文件
+Fake-Compression performs the following operations:
 
-⚠️ **目前`Fake-Compression-fcreader`提取器在[fcreader分支](https://github.com/AllenShiina-Mashiiro/Fake-Compression/tree/fcreader)**
+-   📖 Reads the adjacent `.fckey` sidecar file.
+-   🔓 Decrypts and verifies the metadata.
+-   📦 Extracts the encrypted archive from the outer ZIP container.
+-   🔐 Restores the two encrypted archive layers.
+-   🔎 Verifies the original file manifest.
+-   📏 Verifies file sizes.
+-   🔏 Verifies the SHA-256 hashes of all original files.
 
-## 📝 文件命名与兼容性
+If you receive a disguised `.mp4` file and its `.fckey` file created by
+`Fake-Compression`, you can still extract the contents manually:
 
-- 外部包文件名不是标识字段。
-- 只要对应的 `.fckey` sidecar 文件同步重命名，外部包文件名就可以任意修改。
-- 恢复过程从经过验证的元数据中读取原始文件夹名称和归档布局。
-- 实现过程中绝不能从外部文件名推断内部路径。
-- 新版软件包仅包含固定的 `payload.rar` 条目。
-- 包含该条目的旧版软件包，其 `metadata.fckey` 仍然可读。
+> -   1.  Change the `.mp4` extension to `.zip` or `.rar`.
+> -   2.  Use the `Fake-Compression-fcreader.exe` extractor to retrieve
+>         the **two-layer special keys** inside.
+> -   3.  Use `WinRAR` with the `second-layer key` to extract the `.zip`
+>         file. After extraction, you will obtain the first-layer
+>         volumes.
+> -   4.  Then use `7-Zip` with the `first-layer key` to extract the
+>         final contents and recover the source files.
 
-## 🛠️ 包装与发布
+⚠️ **The `Fake-Compression-fcreader` extractor is currently available in
+the [fcreader
+branch](https://github.com/AllenShiina-Mashiiro/Fake-Compression/tree/fcreader).**
 
-自动生成 EXE、便携式 ZIP 和安装程序的功能已被禁用；源代码验证完成后，维护者将手动打包发布版本。
+## 📝 File Naming and Compatibility
 
-请点击 `Releases` 下载你所需要的版本资产
+-   The external package filename is not used as an identifier.
+-   The external package can be renamed freely, provided that its
+    corresponding `.fckey` sidecar file is renamed to match.
+-   During restoration, the original folder name and archive layout are
+    read from authenticated metadata.
+-   Internal paths must never be inferred from the external filename.
+-   New packages contain only the fixed `payload.rar` entry.
+-   Older packages containing the `metadata.fckey` entry remain
+    readable.
 
-目前仅支持Windows10/11 amdx64
+## 🛠️ Packaging and Releases
 
-- 7-Zip
-- WinRAR
+Automatic generation of EXE files, portable ZIP packages, and installers
+has been disabled. Maintainers will manually package release versions
+after source-code verification.
 
-它们仍然是项目运行所需的外部依赖，不会捆绑在应用程序中。
+Please visit `Releases` to download the version assets you need.
 
-## 📋 环境要求
+Currently supported: Windows 10/11 (x64).
 
-| 项目 | 要求 |
-|---|---|
-| 🐍 Python | 3.10+ |
-| 💻 操作系统 | Windows 10 / 11 |
-| 🗜️ 7-Zip | 命令行程序 `7z.exe` |
-| 🔐 WinRAR | 命令行程序 `rar.exe` |
-| 📦 Python 依赖 | `requirements.txt` |
+Required external tools:
 
-Windows 10/11 提供预期的完整桌面使用体验。
+-   7-Zip
+-   WinRAR
 
-## 🚀 从源代码运行
+These remain external dependencies required by the project and are not
+bundled with the application.
 
-### 1. 克隆项目
+## 📋 Prerequisites / Required Environment
 
-```powershell
+  Item                     Requirement
+  ------------------------ -----------------------------------
+  🐍 Python                3.10+
+  💻 Operating System      Windows 10 / 11
+  🗜️ 7-Zip                 Command-line executable `7z.exe`
+  🔐 WinRAR                Command-line executable `rar.exe`
+  📦 Python Dependencies   `requirements.txt`
+
+Windows 10/11 provides the intended full desktop experience.
+
+## 🚀 Run from Source
+
+### 1. Clone the Repository
+
+``` powershell
 git clone <repository-url>
 cd Fake-Compression
 ```
 
-### 2. 创建虚拟环境
+### 2. Create a Virtual Environment
 
-```powershell
+``` powershell
 py -m venv .venv
 ```
 
-### 3. 激活虚拟环境
+### 3. Activate the Virtual Environment
 
-```powershell
+``` powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 4. 安装依赖
+### 4. Install Dependencies
 
-```powershell
+``` powershell
 py -m pip install -r requirements.txt
 ```
 
-### 5. 配置 Python 模块路径
+### 5. Configure the Python Module Path
 
-```powershell
+``` powershell
 $env:PYTHONPATH = "src"
 ```
 
-### 6. 启动程序
+### 6. Launch the Application
 
-```powershell
+``` powershell
 py main.py
 ```
 
-### ⚙️ 外部工具检测
+### ⚙️ External Tool Detection
 
-7-Zip 和 WinRAR 会尝试从以下位置检测：
+7-Zip and WinRAR are detected from:
 
-- Windows `PATH` 环境变量
-- 常见安装目录
+-   The Windows `PATH` environment variable
+-   Common installation directories
 
-两个程序的执行路径均可在应用程序设置中手动配置。
+The executable paths for both programs can also be configured manually
+in the application settings.
 
-## 🧪 测试
+## 🧪 Testing
 
-### 1. 安装测试依赖
+### 1. Install Test Dependencies
 
-```powershell
+``` powershell
 py -m pip install pytest
 ```
 
-### 2. 配置模块路径
+### 2. Configure the Module Path
 
-```powershell
+``` powershell
 $env:PYTHONPATH = "src"
 ```
 
-### 3. 运行测试
+### 3. Run Tests
 
-```powershell
+``` powershell
 py -m pytest -q
 ```
 
-### 🔬 Windows 端到端测试
+### 🔬 Windows End-to-End Testing
 
-完整的端到端验证需要在同时安装 7-Zip 和 WinRAR 的 Windows 系统上进行。
+Full end-to-end verification requires a Windows system with both 7-Zip
+and WinRAR installed.
 
-仅依靠 CI 和单元测试，无法确定项目与不同版本压缩软件之间的兼容性。
+CI and unit tests alone cannot determine compatibility with the versions
+of the compression tools installed on a system.
 
-项目提供了实际工具回归测试：
+The project provides a real-tool regression test:
 
-```text
+``` text
 tests/test_archive_e2e.py
 ```
 
-当检测到两个外部可执行文件时，该测试会自动运行。
+This test runs automatically when both external executables are
+detected.
 
-主要验证内容：
+The main verification points include:
 
-- 📦 带 `.rar` 后缀的纯 ZIP 容器
-- 🗂️ 多卷归档解压缩
-- 📁 RAR 目录布局
-- 📝 任意输出文件重命名
-- 🔎 使用一次性测试数据进行 SHA-256 完整性校验
+-   📦 A plain ZIP container with a `.rar` extension
+-   🗂️ Multi-volume archive extraction
+-   📁 RAR directory layout
+-   📝 Arbitrary output-file renaming
+-   🔎 SHA-256 integrity verification using disposable test data
 
-## 🧩 独立工具
+## 🧩 Standalone Utility
 
-独立的图形化 `.fckey` 阅读器正在单独的 `fcreader` 分支上开发。
+A standalone graphical `.fckey` reader is being developed on the
+separate `fcreader` branch.
 
-它有意不与主要的 Fake-Compression 应用程序捆绑。
+It is intentionally not bundled with the main Fake-Compression
+application.
 
-## 🛡️ 安全说明
+## 🛡️ Security Notes
 
-> ⚠️ **重要：当前项目原型尚未达到经过强化的高安全性保险库标准。**
+> ⚠️ **Important: The current project prototype has not yet been
+> hardened to the level of a high-security vault.**
 
-- `.fckey` 二进制扩展名本身不提供任何安全保障。
-- 数据保密性和防篡改检测必须依靠经过认证的加密机制。
-- 切勿以明文形式存储原始密码。
-- 7-Zip 和 WinRAR 的命令行接口可能会在任务运行期间，将密码参数暴露给本地进程检查。
-- 在信任重要数据之前，请始终使用一次性副本进行测试。
-- 不要以管理员身份运行解压缩程序。
+-   The `.fckey` binary extension itself provides no security.
+-   Confidentiality and tamper detection must rely on authenticated
+    encryption.
+-   Never store original passwords in plaintext.
+-   The command-line interfaces of 7-Zip and WinRAR may expose password
+    arguments to local process inspection while a task is running.
+-   Always test with disposable copies before trusting important data.
+-   Do not run the extraction program as an administrator.
 
-## 🌿 分支与发布策略
+## 🌿 Branch and Release Strategy
 
-项目采用 Beta / Alpha 双分支开发与发布策略。
+The project uses a dual-branch Beta / Alpha development and release
+strategy.
 
-### 🧪 Beta — 开发与验证分支
+### 🧪 Beta --- Development and Validation Branch
 
-- 活跃开发分支。
-- 新功能和修复程序优先提交至此分支。
-- 用于功能测试、兼容性验证和问题修复。
-- 不直接作为正式用户发布版本。
+-   The active development branch.
+-   New features and fixes are committed here first.
+-   Used for feature testing, compatibility validation, and bug fixing.
+-   Not intended to be released directly to end users.
 
-### 🚀 Alpha — 面向用户的发布分支
+### 🚀 Alpha --- User-Facing Release Branch
 
-- Beta 验证完成后，将测试通过的提交提升至 Alpha。
-- 作为经过验证的用户发布版本。
-- 仅接受已经完成测试的提交。
+-   Once Beta validation is complete, tested commits are promoted to
+    Alpha.
+-   Serves as the validated release version for users.
+-   Only commits that have completed testing are accepted.
 
-> 🔴 **发布原则：永远不要发布未经测试的 Beta 版本。**
-
-
+> 🔴 **Release Rule: Never publish an untested Beta version.**
