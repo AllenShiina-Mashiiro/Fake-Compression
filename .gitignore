@@ -24,3 +24,7 @@ htmlcov/
 *.spec.bak
 *.egg-info/
 __pypackages__/
+
+# Local OneDir packaging configuration
+/Fake-Compression-OneDir.iss
+/Fake-Compression-OneDir.spec
