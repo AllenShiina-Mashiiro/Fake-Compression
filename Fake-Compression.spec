@@ -32,6 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['assets/fake-compression.ico'],
 )
 coll = COLLECT(
     exe,
