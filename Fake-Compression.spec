@@ -1,36 +1,44 @@
-# PyInstaller build specification for the Windows desktop application.
-from pathlib import Path
-from PyInstaller.utils.hooks import collect_submodules
+# -*- mode: python ; coding: utf-8 -*-
 
-root = Path(SPECPATH)
-src = root / "src"
-icon = root / "build" / "fake-compression.ico"
 
 a = Analysis(
-    ["main.py"],
-    pathex=[str(src)],
+    ['main.py'],
+    pathex=['src'],
     binaries=[],
-    datas=[
-        (str(icon), "fake_compression/assets"),
-        (str(src / "fake_compression" / "assets" / "fake-compression.svg"),
-         "fake_compression/assets"),
-    ],
-    hiddenimports=collect_submodules("shiboken6"),
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["pytest", "IPython", "jupyter", "notebook"],
+    excludes=[],
     noarchive=False,
+    optimize=0,
 )
 pyz = PYZ(a.pure)
+
 exe = EXE(
-    pyz, a.scripts, a.binaries, a.datas, [],
-    name="Fake-Compression",
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='Fake-Compression',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     console=False,
     disable_windowed_traceback=False,
-    icon=str(icon),
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='Fake-Compression',
 )
