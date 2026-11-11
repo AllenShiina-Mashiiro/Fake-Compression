@@ -1,0 +1,6 @@
+# 默认统一使用 LF
+* text=auto eol=lf
+
+# Windows 脚本保留 CRLF（可选）
+*.bat text eol=crlf
+*.cmd text eol=crlf
