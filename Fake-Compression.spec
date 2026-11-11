@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=['src'],
     binaries=[],
-    datas=[],
+    datas=[('assets/fake-compression.ico', 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
