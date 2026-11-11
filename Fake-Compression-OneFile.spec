@@ -1,11 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
+ROOT = Path(SPECPATH)
+ICON_PATH = ROOT / "src" / "fake_compression" / "assets" / "fake-compression.ico"
+SVG_PATH = ROOT / "src" / "fake_compression" / "assets" / "fake-compression.svg"
 
 a = Analysis(
     ['main.py'],
-    pathex=['src'],
+    pathex=[str(ROOT / 'src')],
     binaries=[],
-    datas=[('assets/fake-compression.ico', 'assets')],
+    datas=[
+        (str(ICON_PATH), 'assets'),
+        (str(SVG_PATH), 'assets'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -14,13 +22,15 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
     name='Fake-Compression',
     debug=False,
     bootloader_ignore_signals=False,
@@ -32,14 +42,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets/fake-compression.ico'],
-)
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='Fake-Compression',
+    icon=str(ICON_PATH),
 )

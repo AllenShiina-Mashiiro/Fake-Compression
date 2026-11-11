@@ -20,6 +20,14 @@ from .archive_paths import validate_package_name
 from .tools import find_7z, find_rar
 from .worker import TaskWorker
 
+def resource_path(relative_path):
+    if getattr(sys, "frozen", False):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).resolve().parent
+
+    return base_path / relative_path
+
 STYLE = """
 QMainWindow, QWidget { background: #242424; color: #eeeeeb; font-family: "Segoe UI", "Microsoft YaHei UI"; font-size: 13px; }
 QMenuBar { background: #202020; color: #deded9; border-bottom: 1px solid #333333; padding: 3px 8px; }
@@ -55,9 +63,14 @@ class MainWindow(QMainWindow):
         self.open_package = Path(open_package) if open_package else None
         self.settings = QSettings("FakeCompression", "FakeCompression")
         self.setWindowTitle(f"Fake-Compression  ·  {__version__}")
-        icon_path = Path(__file__).resolve().parent / "assets" / "fake-compression.svg"
-        if icon_path.is_file():
-            self.setWindowIcon(QIcon(str(icon_path)))
+
+        # 加载 ICO 图标，兼容源码运行和 PyInstaller OneFile
+        icon_path = resource_path("assets/fake-compression.ico")
+        icon = QIcon(str(icon_path))
+
+        if not icon.isNull():
+            self.setWindowIcon(icon)
+
         self.resize(1040, 700)
         self._build_menu()
         self.setMinimumSize(680, 460)
@@ -766,17 +779,58 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    from PySide6.QtGui import QIcon
+    icon_path = Path(__file__).resolve().parent / "assets" / "fake-compression.ico"
+    app.setWindowIcon(QIcon(str(icon_path)))
     app.setOrganizationName("FakeCompression")
     app.setApplicationName("FakeCompression")
     app.setStyle("Fusion")
     app.setStyleSheet(STYLE)
     open_package = next((arg for arg in sys.argv[1:] if not arg.startswith("-")), None)
     window = MainWindow(open_package=open_package)
+    window.setWindowIcon(QIcon(str(icon_path)))
     window.show()
     if window.open_package and window.open_package.is_file():
         window.switch_page(1)
         window.selected_packages = [window.open_package]
         window.fc_path.setText(str(window.open_package))
+    return app.exec()
+
+
+def main():
+    app = QApplication(sys.argv)
+
+    # 设置整个 Qt 应用的默认图标
+    icon_path = resource_path("assets/fake-compression.ico")
+    icon = QIcon(str(icon_path))
+
+    if not icon.isNull():
+        app.setWindowIcon(icon)
+
+    app.setOrganizationName("FakeCompression")
+    app.setApplicationName("FakeCompression")
+
+    app.setStyle("Fusion")
+    app.setStyleSheet(STYLE)
+
+    open_package = next(
+        (arg for arg in sys.argv[1:] if not arg.startswith("-")),
+        None
+    )
+
+    window = MainWindow(open_package=open_package)
+
+    # 显式设置主窗口图标
+    if not icon.isNull():
+        window.setWindowIcon(icon)
+
+    window.show()
+
+    if window.open_package and window.open_package.is_file():
+        window.switch_page(1)
+        window.selected_packages = [window.open_package]
+        window.fc_path.setText(str(window.open_package))
+
     return app.exec()
 
 
