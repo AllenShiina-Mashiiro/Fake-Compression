@@ -1,6 +1,6 @@
 # 📦 Fake-Compression（伪压缩）
 
-一款用于创建加密存档和恢复原始文件夹的 Windows 桌面实用程序
+一款将目标源文件压缩成.mp4的多面体文件，旨在完成批量备份加密数据的开源工具
 
 [简体中文](README.zh.md) | [English](README.md)
 ## 🎨 设计方向
