@@ -21,6 +21,18 @@ This version is in the completion stage. For subsequent updates, please
 follow the [Beta
 branch](https://github.com/AllenShiina-Mashiiro/Fake-Compression/tree/Beta).
 
+### 🛠️ Recent Fixes and Updates
+
+The latest restoration update includes:
+
+- 🈯 **Safer Unicode archive listing:** 7-Zip `-slt` output is parsed from the member-record section after its separator, so archive-level metadata is not mistaken for an extracted member.
+- 🛡️ **Fail-closed archive validation:** if the expected 7-Zip member separator is missing, listing validation stops with an error instead of guessing. Duplicate and case-insensitive path-conflict checks remain enabled.
+- 🔤 **Console output handling:** explicit character-set options are passed to 7-Zip and WinRAR, and backspace-based progress output is normalized before it is written to the task log. Actual compatibility still depends on the installed Windows archiver versions and should be verified with real archives.
+- 🔑 **Independent FCKEY selection:** users can select a `.fckey` file separately from the encrypted `.rar` or disguised `.mp4` package. If no key is selected, the application retains the adjacent same-name sidecar lookup.
+- 📚 **Batch restoration support:** the restore interface accepts multiple packages and separate key files, with key-to-package matching handled by the restoration service.
+- 🧪 **Regression coverage:** tests were added for Unicode member paths, archive-header exclusion, duplicate member paths, missing separators, and restoring with a separately located key file.
+- 🧾 **Clearer key-file errors:** missing-key messages now identify the sidecar path that the restoration operation actually tried to use.
+
 ### ✨ Core Features
 
 -   🖥️ A PySide6 desktop interface for packaging and restoration.
@@ -94,7 +106,7 @@ metadata verification.
 
 Fake-Compression performs the following operations:
 
--   📖 Reads the adjacent `.fckey` sidecar file.
+-   📖 Uses the separately selected `.fckey` file when one is provided; otherwise, it looks for the adjacent same-name sidecar.
 -   🔓 Decrypts and verifies the metadata.
 -   📦 Extracts the encrypted archive from the outer ZIP container.
 -   🔐 Restores the two encrypted archive layers.
@@ -121,8 +133,7 @@ branch](https://github.com/AllenShiina-Mashiiro/Fake-Compression/tree/fcreader).
 ## 📝 File Naming and Compatibility
 
 -   The external package filename is not used as an identifier.
--   The external package can be renamed freely, provided that its
-    corresponding `.fckey` sidecar file is renamed to match.
+-   The external package can be renamed freely. For automatic sidecar discovery, rename its `.fckey` file to the same base name; alternatively, select the key file separately during restoration.
 -   During restoration, the original folder name and archive layout are
     read from authenticated metadata.
 -   Internal paths must never be inferred from the external filename.
