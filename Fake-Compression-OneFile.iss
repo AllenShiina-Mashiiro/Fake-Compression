@@ -1,6 +1,6 @@
 
 #define AppName "Fake-Compression"
-#define AppVersion "1.1.4-Alpha"
+#define AppVersion "1.1.5-Alpha"
 #define AppExe "Fake-Compression.exe"
 #define KeyProgId "FakeCompression.FCKey.OpenWith"
 

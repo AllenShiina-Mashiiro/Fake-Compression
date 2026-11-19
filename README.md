@@ -15,7 +15,7 @@ This is a practical desktop utility, not a dashboard template.
 -   🚫 No unnecessary gradients, decorative statistics, or oversized
     icon cards
 
-## 🚧 Current Version: `1.1.4-Alpha`
+## 🚧 Current Version: `1.1.5-Alpha`
 
 This version is in the completion stage. For subsequent updates, please
 follow the [Beta
@@ -66,7 +66,7 @@ branch](https://github.com/AllenShiina-Mashiiro/Fake-Compression/tree/Beta).
 -   🔑 Authenticated metadata is stored in an external `.fckey` sidecar
     file whose name matches the final package.
 
--   🗂️ Target Archive Layout (1.1.4-Alpha)
+-   🗂️ Target Archive Layout (1.1.5-Alpha)
 
 The target workflow uses dual-layer encrypted archives and external
 metadata verification.
