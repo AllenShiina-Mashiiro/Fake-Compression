@@ -304,7 +304,7 @@ class ArchiveService:
                     sidecar_path = Path(key_path).resolve() if key_path is not None else package_path.with_suffix(".fckey")
                     if not sidecar_path.is_file():
                         raise FileNotFoundError(
-                            f"缺少配套 Reader 密钥文件：{key_path.name}"
+                            f"缺少配套 Reader 密钥文件：{sidecar_path.name}"
                         )
                     metadata_blob = sidecar_path.read_bytes()
                 elif sorted(names) == sorted([OUTER_METADATA, OUTER_ARCHIVE]):
