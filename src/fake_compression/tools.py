@@ -158,6 +158,10 @@ def run_checked(command: list[str], on_output=None, cancel_event=None, cwd=None)
                 if pending and on_output:
                     on_output(pending.strip())
                 pending = ""
+            elif char == "\b":
+                # Progress renderers use backspace to overwrite the previous
+                # character; do not leak terminal control bytes into the log.
+                pending = pending[:-1]
             else:
                 pending += char
         code = process.wait()

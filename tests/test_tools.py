@@ -110,3 +110,13 @@ def test_normalize_dictionary_size_rejects_unsupported_values():
 
     with pytest.raises(ValueError, match="不支持"):
         normalize_dictionary_size("1024m")
+
+
+
+def test_run_checked_applies_backspace_to_console_output():
+    output = []
+    run_checked(
+        [sys.executable, "-c", "import sys; sys.stdout.write('abc\\bX\\n')"],
+        on_output=output.append,
+    )
+    assert output == ["abX"]

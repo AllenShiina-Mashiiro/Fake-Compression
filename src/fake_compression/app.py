@@ -305,15 +305,24 @@ class MainWindow(QMainWindow):
     def build_extract_page(self):
         page, layout = self.page_shell("恢复文件", "验证加密清单与全部分卷后，再恢复原始文件。")
         self.fc_path = QLineEdit()
-        self.fc_path.setPlaceholderText("选择一个或多个加密成品")
+        self.fc_path.setPlaceholderText("选择一个或多个 .rar / .mp4 加密成品")
         self.fc_path.setReadOnly(True)
         self.selected_packages = []
         self.extract_batch_mode = QCheckBox("批量恢复：处理所选的全部成品")
         layout.addWidget(self.extract_batch_mode)
-        browse = QPushButton("浏览…")
+        browse = QPushButton("选择成品…")
         browse.clicked.connect(self.pick_fc)
-        layout.addWidget(QLabel("FC 文件"))
+        layout.addWidget(QLabel("加密成品（.rar / .mp4）"))
         layout.addLayout(self.path_row(self.fc_path, browse))
+
+        self.fckey_path = QLineEdit()
+        self.fckey_path.setPlaceholderText("可单独选择配套 .fckey；留空时自动查找同名文件")
+        self.fckey_path.setReadOnly(True)
+        self.selected_key_files = []
+        browse_key = QPushButton("选择密钥…")
+        browse_key.clicked.connect(self.pick_fckey)
+        layout.addWidget(QLabel("FCKEY 密钥文件（可独立导入）"))
+        layout.addLayout(self.path_row(self.fckey_path, browse_key))
 
         self.extract_output = QLineEdit(str(self.settings.value("paths/extract_output", Path.home() / "Restored")))
         browse_out = QPushButton("浏览…")
@@ -495,10 +504,22 @@ class MainWindow(QMainWindow):
             self.save_settings()
 
     def pick_fc(self):
-        paths = QFileDialog.getOpenFileNames(self, "选择一个或多个加密成品", filter="All files (*)")[0]
+        paths = QFileDialog.getOpenFileNames(
+            self, "选择一个或多个加密成品",
+            filter="Fake-Compression 成品 (*.rar *.mp4);;所有文件 (*)",
+        )[0]
         if paths:
             self.selected_packages = [Path(item) for item in paths]
             self.fc_path.setText("；".join(item.name for item in self.selected_packages))
+
+    def pick_fckey(self):
+        paths = QFileDialog.getOpenFileNames(
+            self, "单独选择配套 FCKEY 密钥文件",
+            filter="FCKEY 密钥 (*.fckey);;所有文件 (*)",
+        )[0]
+        if paths:
+            self.selected_key_files = [Path(item) for item in paths]
+            self.fckey_path.setText("；".join(item.name for item in self.selected_key_files))
 
     def pick_extract_output(self):
         path = QFileDialog.getExistingDirectory(self, "选择恢复目录", self.extract_output.text())
@@ -661,11 +682,13 @@ class MainWindow(QMainWindow):
         self.extract_log.clear()
         self.active_log = self.extract_log
         operation = service.extract_batch if self.extract_batch_mode.isChecked() else service.extract
+        key_files = self.selected_key_files
         if self.extract_batch_mode.isChecked():
             self.worker = TaskWorker(
                 operation, packages, Path(output_text), password,
                 second_password=self.extract_second_password.text(),
                 repeat_password=self.extract_repeat_password.isChecked(),
+                key_paths=key_files,
             )
         else:
             if len(packages) != 1:
@@ -673,10 +696,17 @@ class MainWindow(QMainWindow):
                 self.extract_button.setEnabled(True)
                 self.cancel_extract_button.hide()
                 return
+            key_files = self.selected_key_files
+            if len(key_files) > 1:
+                QMessageBox.warning(self, "密钥文件数量不匹配", "单个成品只能选择一个 .fckey 文件。")
+                self.extract_button.setEnabled(True)
+                self.cancel_extract_button.hide()
+                return
             self.worker = TaskWorker(
                 operation, packages[0], Path(output_text), password,
                 second_password=self.extract_second_password.text(),
                 repeat_password=self.extract_repeat_password.isChecked(),
+                key_path=key_files[0] if key_files else None,
             )
         self.worker.message.connect(self.extract_log.appendPlainText)
         self.worker.progress.connect(self.extract_progress.setValue)

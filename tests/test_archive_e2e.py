@@ -51,11 +51,13 @@ def test_real_two_layer_round_trip_after_arbitrary_rename(tmp_path, monkeypatch,
 
     renamed = output / "completely-unrelated-name.rar"
     package.rename(renamed)
-    key_file.rename(renamed.with_suffix(".fckey"))
+    external_key = output / "separately-imported-key.fckey"
+    key_file.rename(external_key)
     result = service.extract(
         renamed, restored, "first raw password",
         second_password="second raw password",
         repeat_password=repeat_password,
+        key_path=external_key,
     )
     assert result.name == source.name
     assert (result / "hello.txt").read_text(encoding="utf-8") == "hello Fake-Compression"

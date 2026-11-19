@@ -22,6 +22,29 @@ OUTER_METADATA = "metadata.fckey"
 OUTER_ARCHIVE = "payload.rar"
 
 
+def parse_7z_slt_member_paths(lines: list[str]) -> list[str]:
+    """Return member paths from 7-Zip -slt output, excluding archive metadata."""
+    try:
+        separator = next(index for index, line in enumerate(lines) if line.strip() == "----------")
+    except StopIteration as exc:
+        raise ValueError("7-Zip 列表输出缺少成员分隔标记，无法安全校验。") from exc
+
+    records = []
+    current = {}
+    for line in lines[separator + 1:]:
+        if not line.strip():
+            if "Path" in current:
+                records.append(current)
+            current = {}
+            continue
+        if " = " in line:
+            key, value = line.split(" = ", 1)
+            current[key.strip()] = value
+    if "Path" in current:
+        records.append(current)
+    return [record["Path"] for record in records]
+
+
 def validate_fckey_metadata(metadata: object) -> dict:
     """Validate authenticated metadata structure before using any value as a path."""
     if not isinstance(metadata, dict):
@@ -131,7 +154,7 @@ class ArchiveService:
         with tempfile.TemporaryDirectory(prefix="fc-create-") as temp_name:
             work = Path(temp_name)
             volume_base = work / f"{source.name}.7z"
-            command = [self.seven_zip, "a", "-t7z",
+            command = [self.seven_zip, "a", "-t7z", "-sccUTF-8",
                        f"-mx={self.performance['compression_level']}", "-mhe=on", "-bsp1",
                        f"-mmt={self.performance['threads']}",
                        # The dictionary is a persistent user setting and is passed
@@ -178,7 +201,7 @@ class ArchiveService:
             # The RAR layer contains already-compressed 7z volumes. Store them
             # without recompression: this preserves RAR5 encryption while avoiding
             # wasted CPU time and the RAR dictionary-size incompatibility.
-            rar_command = [self.winrar, "a", "-ma5", "-m0", "-r",
+            rar_command = [self.winrar, "a", "-ma5", "-m0", "-r", "-scuc",
                            f"-mt{self.performance['threads']}",
                            "-hp" + rar_password, "-y", str(rar_path), volume_folder.name]
             stage_started = time.monotonic()
@@ -249,7 +272,7 @@ class ArchiveService:
 
     def extract(self, package_path: Path, output_dir: Path, master_password: str,
                 on_output=None, cancel_event=None, second_password: str | None = None,
-                repeat_password: bool = True) -> Path:
+                repeat_password: bool = True, key_path: Path | None = None) -> Path:
         package_path, output_dir = Path(package_path).resolve(), Path(output_dir).resolve()
         if not package_path.is_file():
             raise FileNotFoundError(package_path)
@@ -278,12 +301,12 @@ class ArchiveService:
                 validate_archive_paths(names)
                 if names == [OUTER_ARCHIVE]:
                     # New layout: metadata is stored once, beside the package.
-                    key_path = package_path.with_suffix(".fckey")
-                    if not key_path.is_file():
+                    sidecar_path = Path(key_path).resolve() if key_path is not None else package_path.with_suffix(".fckey")
+                    if not sidecar_path.is_file():
                         raise FileNotFoundError(
                             f"缺少配套 Reader 密钥文件：{key_path.name}"
                         )
-                    metadata_blob = key_path.read_bytes()
+                    metadata_blob = sidecar_path.read_bytes()
                 elif sorted(names) == sorted([OUTER_METADATA, OUTER_ARCHIVE]):
                     # Backward compatibility for older packages.
                     metadata_blob = package.read(OUTER_METADATA)
@@ -304,12 +327,12 @@ class ArchiveService:
             first_password = derive_archive_password(master_password, salt, 1)
 
             listing = []
-            run_checked([self.winrar, "lb", "-hp" + rar_password, str(rar_path)],
+            run_checked([self.winrar, "lb", "-scuc", "-hp" + rar_password, str(rar_path)],
                         on_output=listing.append, cancel_event=cancel_event)
             validate_archive_paths(listing)
             rar_stage = work / "rar-stage"
             rar_stage.mkdir()
-            run_checked([self.winrar, "x", "-ibck", "-y",
+            run_checked([self.winrar, "x", "-scuc", "-ibck", "-y",
                          f"-mt{self.performance['threads']}", "-hp" + rar_password,
                          str(rar_path), str(rar_stage) + os.sep],
                         on_output=on_output, cancel_event=cancel_event)
@@ -326,18 +349,16 @@ class ArchiveService:
 
             first_volume = volume_dir / metadata["first_layer"]["volumes"][0]["name"]
             seven_listing = []
-            run_checked([self.seven_zip, "l", "-slt", str(first_volume), f"-p{first_password}"],
+            run_checked([self.seven_zip, "l", "-sccUTF-8", "-slt", str(first_volume), f"-p{first_password}"],
                         on_output=seven_listing.append, cancel_event=cancel_event)
-            member_paths = [line[7:] for line in seven_listing if line.startswith("Path = ")]
-            if member_paths:
-                member_paths = member_paths[1:]
+            member_paths = parse_7z_slt_member_paths(seven_listing)
             validate_archive_paths(member_paths)
             if any(line.startswith(("Symbolic Link = ", "Hard Link = ")) for line in seven_listing):
                 raise ValueError("第一层压缩包包含链接条目，已拒绝恢复。")
 
             restored_stage = work / "restored"
             restored_stage.mkdir()
-            run_checked([self.seven_zip, "x", "-bsp1",
+            run_checked([self.seven_zip, "x", "-sccUTF-8", "-bsp1",
                          f"-mmt={self.performance['threads']}", str(first_volume),
                          f"-o{restored_stage}", f"-p{first_password}", "-y"],
                         on_output=on_output, cancel_event=cancel_event)
@@ -380,7 +401,7 @@ class ArchiveService:
 
     def extract_batch(self, package_paths: list[Path], output_dir: Path, master_password: str,
                       on_output=None, cancel_event=None, second_password: str | None = None,
-                      repeat_password: bool = True) -> list[dict]:
+                      repeat_password: bool = True, key_paths: list[Path] | None = None) -> list[dict]:
         """Restore multiple packages independently; report failures without stopping the batch."""
         # Sidecar .fckey files are metadata, not standalone packages.
         packages = [Path(item) for item in package_paths if Path(item).suffix.lower() != ".fckey"]
@@ -389,6 +410,17 @@ class ArchiveService:
             on_output(f"[提示] 已自动忽略 {skipped} 个 .fckey 配套文件；请选择对应的 .rar / .mp4 成品恢复。")
         if not packages:
             raise ValueError("没有可恢复的压缩成品。请只选择 .rar 或 .mp4 文件，不要单独选择 .fckey。")
+        selected_keys = [Path(item).resolve() for item in (key_paths or [])]
+        key_by_stem = {item.stem.casefold(): item for item in selected_keys}
+        if selected_keys and len(selected_keys) not in (1, len(packages)):
+            raise ValueError("批量恢复时，.fckey 数量必须与成品数量一致。")
+        if len(packages) > 1 and len(selected_keys) == 1:
+            raise ValueError("多个成品不能共用一个 .fckey 文件，请分别选择每个成品对应的密钥文件。")
+        positional_keys = {}
+        if selected_keys and len(selected_keys) == len(packages):
+            if not all(package.stem.casefold() in key_by_stem for package in packages):
+                positional_keys = {str(package): selected_keys[index] for index, package in enumerate(packages)}
+
         results = []
         for package in packages:
             if cancel_event and cancel_event.is_set():
@@ -396,10 +428,14 @@ class ArchiveService:
                 raise OperationCancelled("批量任务已取消。")
             package = Path(package)
             try:
+                explicit_key = key_by_stem.get(package.stem.casefold()) or positional_keys.get(str(package))
+                if selected_keys and explicit_key is None:
+                    raise ValueError(f"找不到与成品对应的 .fckey：{package.name}")
                 result = self.extract(
                     package, output_dir, master_password,
                     on_output=on_output, cancel_event=cancel_event,
                     second_password=second_password, repeat_password=repeat_password,
+                    key_path=explicit_key,
                 )
                 results.append({"package": str(package), "success": True, "output": str(result)})
             except Exception as exc:
