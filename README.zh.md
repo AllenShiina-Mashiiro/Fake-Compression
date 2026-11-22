@@ -259,4 +259,12 @@ tests/test_archive_e2e.py
 
 > 🔴 **发布原则：永远不要发布未经测试的 Beta 版本。**
 
+---
 
+## 📄 License
+
+Copyright © 2026 AllenShiina-Mashiiro
+
+This project is licensed under the Apache License 2.0.
+
+See the [LICENSE](LICENSE) file for details.
