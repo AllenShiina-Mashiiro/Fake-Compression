@@ -307,3 +307,13 @@ strategy.
 -   Only commits that have completed testing are accepted.
 
 > 🔴 **Release Rule: Never publish an untested Beta version.**
+
+---
+
+## 📄 License
+
+Copyright © 2026 AllenShiina-Mashiiro
+
+This project is licensed under the Apache License 2.0.
+
+See the [LICENSE](LICENSE) file for details.
