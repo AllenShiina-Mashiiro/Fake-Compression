@@ -270,13 +270,13 @@ class ArchiveService:
             except Exception:
                 staged_key.unlink(missing_ok=True)
                 final_path.unlink(missing_ok=True)
+                if not package_dir_existed:
+                    # Only remove a folder created by this run, and only if it is empty.
+                    try:
+                        package_dir.rmdir()
+                    except OSError:
+                        pass
                 raise
-        if not package_dir_existed:
-            # Only remove a folder created by this run, and only if it is empty.
-            try:
-                package_dir.rmdir()
-            except OSError:
-                pass
         return final_path
 
     def extract(self, package_path: Path, output_dir: Path, master_password: str,
