@@ -134,9 +134,12 @@ class ArchiveService:
             raise ValueError("请选择有效且非符号链接的预览视频。")
 
         output_dir.mkdir(parents=True, exist_ok=True)
+        package_dir = output_dir / name
+        package_dir_existed = package_dir.exists()
+        package_dir.mkdir(parents=True, exist_ok=True)
         final_suffix = Path(video).suffix.lower() if video is not None else ".rar"
-        final_path = output_dir / f"{name}{final_suffix}"
-        key_path = output_dir / f"{name}.fckey"
+        final_path = package_dir / f"{name}{final_suffix}"
+        key_path = package_dir / f"{name}.fckey"
         if final_path.exists():
             raise FileExistsError(f"输出文件已存在：{final_path}")
         if key_path.exists():
@@ -250,7 +253,7 @@ class ArchiveService:
                     # followed by the complete ZIP payload.
                     create_polyhedron(Path(video), outer_zip, final_path, cancel_event)
                 else:
-                    staged_output = output_dir / (final_path.name + ".partial")
+                    staged_output = package_dir / (final_path.name + ".partial")
                     try:
                         shutil.copy2(outer_zip, staged_output)
                         os.replace(staged_output, final_path)
@@ -268,6 +271,12 @@ class ArchiveService:
                 staged_key.unlink(missing_ok=True)
                 final_path.unlink(missing_ok=True)
                 raise
+        if not package_dir_existed:
+            # Only remove a folder created by this run, and only if it is empty.
+            try:
+                package_dir.rmdir()
+            except OSError:
+                pass
         return final_path
 
     def extract(self, package_path: Path, output_dir: Path, master_password: str,
